@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package signaller;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = ".;proto";
+
+service SignallerApi {
+  rpc Stream(SubscribeRequest) returns (stream PositionEvent) {}
+}
+
+message SubscribeRequest {
+  repeated string Uids = 1;
+}
+
+enum Direction {
+  LONG = 0;
+  SHORT = 1;
+}
+
+enum Command {
+  CREATE = 0;
+  UPDATE = 1;
+  CLOSE = 2;
+}
+
+message PositionEvent {
+  string Symbol = 1;
+  string Uid = 2;
+  Direction Direction = 3;
+  int64 PositionId = 4;
+  Command Command = 5;
+  string Exchange = 6;
+  uint32 Leverage = 7;
+  double EntryPrice = 8;
+  google.protobuf.Timestamp CreatedAt = 9;
+  bool Hedged = 10;
+}
