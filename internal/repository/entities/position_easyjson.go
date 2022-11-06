@@ -3,6 +3,7 @@
 package entities
 
 import (
+	sql "database/sql"
 	json "encoding/json"
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
@@ -38,48 +39,32 @@ func easyjsonE0c3566dDecodeGithubComBurnbSignallerInternalRepositoryEntities(in 
 		switch key {
 		case "Id":
 			out.Id = int64(in.Int64())
-		case "uid":
-			out.UserId = string(in.String())
+		case "TraderUID":
+			out.TraderUID = string(in.String())
 		case "symbol":
 			out.Symbol = string(in.String())
 		case "entryPrice":
 			out.EntryPrice = float64(in.Float64())
-		case "markPrice":
-			out.MarkPrice = float64(in.Float64())
-		case "pnl":
+		case "Pnl":
 			out.Pnl = float64(in.Float64())
-		case "roe":
+		case "Roe":
 			out.Roe = float64(in.Float64())
-		case "amount":
+		case "Amount":
 			out.Amount = float64(in.Float64())
-		case "leverage":
-			out.Leverage = uint8(in.Uint8())
 		case "Invested":
 			out.Invested = float64(in.Float64())
-		case "Opened":
-			out.Opened = bool(in.Bool())
-		case "Long":
-			out.Long = bool(in.Bool())
+		case "Leverage":
+			out.Leverage = uint8(in.Uint8())
 		case "createTimestamp":
-			out.CreateTimestamp = int64(in.Int64())
-		case "updateTimestamp":
-			out.UpdateTimestamp = int64(in.Int64())
-		case "closedTimestamp":
-			if in.IsNull() {
-				in.Skip()
-				out.ClosedTimestamp = nil
-			} else {
-				if out.ClosedTimestamp == nil {
-					out.ClosedTimestamp = new(int64)
-				}
-				*out.ClosedTimestamp = int64(in.Int64())
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.CreatedAt).UnmarshalJSON(data))
 			}
-		case "Exchange":
-			out.Exchange = string(in.String())
-		case "MarginMode":
-			out.MarginMode = string(in.String())
-		case "Hedged":
-			out.Hedged = bool(in.Bool())
+		case "updateTimestamp":
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.UpdatedAt).UnmarshalJSON(data))
+			}
+		case "closedTimestamp":
+			easyjsonE0c3566dDecodeDatabaseSql(in, &out.ClosedAt)
 		default:
 			in.SkipRecursive()
 		}
@@ -100,9 +85,9 @@ func easyjsonE0c3566dEncodeGithubComBurnbSignallerInternalRepositoryEntities(out
 		out.Int64(int64(in.Id))
 	}
 	{
-		const prefix string = ",\"uid\":"
+		const prefix string = ",\"TraderUID\":"
 		out.RawString(prefix)
-		out.String(string(in.UserId))
+		out.String(string(in.TraderUID))
 	}
 	{
 		const prefix string = ",\"symbol\":"
@@ -115,29 +100,19 @@ func easyjsonE0c3566dEncodeGithubComBurnbSignallerInternalRepositoryEntities(out
 		out.Float64(float64(in.EntryPrice))
 	}
 	{
-		const prefix string = ",\"markPrice\":"
-		out.RawString(prefix)
-		out.Float64(float64(in.MarkPrice))
-	}
-	{
-		const prefix string = ",\"pnl\":"
+		const prefix string = ",\"Pnl\":"
 		out.RawString(prefix)
 		out.Float64(float64(in.Pnl))
 	}
 	{
-		const prefix string = ",\"roe\":"
+		const prefix string = ",\"Roe\":"
 		out.RawString(prefix)
 		out.Float64(float64(in.Roe))
 	}
 	{
-		const prefix string = ",\"amount\":"
+		const prefix string = ",\"Amount\":"
 		out.RawString(prefix)
 		out.Float64(float64(in.Amount))
-	}
-	{
-		const prefix string = ",\"leverage\":"
-		out.RawString(prefix)
-		out.Uint8(uint8(in.Leverage))
 	}
 	{
 		const prefix string = ",\"Invested\":"
@@ -145,48 +120,24 @@ func easyjsonE0c3566dEncodeGithubComBurnbSignallerInternalRepositoryEntities(out
 		out.Float64(float64(in.Invested))
 	}
 	{
-		const prefix string = ",\"Opened\":"
+		const prefix string = ",\"Leverage\":"
 		out.RawString(prefix)
-		out.Bool(bool(in.Opened))
-	}
-	{
-		const prefix string = ",\"Long\":"
-		out.RawString(prefix)
-		out.Bool(bool(in.Long))
+		out.Uint8(uint8(in.Leverage))
 	}
 	{
 		const prefix string = ",\"createTimestamp\":"
 		out.RawString(prefix)
-		out.Int64(int64(in.CreateTimestamp))
+		out.Raw((in.CreatedAt).MarshalJSON())
 	}
 	{
 		const prefix string = ",\"updateTimestamp\":"
 		out.RawString(prefix)
-		out.Int64(int64(in.UpdateTimestamp))
+		out.Raw((in.UpdatedAt).MarshalJSON())
 	}
 	{
 		const prefix string = ",\"closedTimestamp\":"
 		out.RawString(prefix)
-		if in.ClosedTimestamp == nil {
-			out.RawString("null")
-		} else {
-			out.Int64(int64(*in.ClosedTimestamp))
-		}
-	}
-	{
-		const prefix string = ",\"Exchange\":"
-		out.RawString(prefix)
-		out.String(string(in.Exchange))
-	}
-	{
-		const prefix string = ",\"MarginMode\":"
-		out.RawString(prefix)
-		out.String(string(in.MarginMode))
-	}
-	{
-		const prefix string = ",\"Hedged\":"
-		out.RawString(prefix)
-		out.Bool(bool(in.Hedged))
+		easyjsonE0c3566dEncodeDatabaseSql(out, in.ClosedAt)
 	}
 	out.RawByte('}')
 }
@@ -213,4 +164,55 @@ func (v *Position) UnmarshalJSON(data []byte) error {
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Position) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjsonE0c3566dDecodeGithubComBurnbSignallerInternalRepositoryEntities(l, v)
+}
+func easyjsonE0c3566dDecodeDatabaseSql(in *jlexer.Lexer, out *sql.NullTime) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "Time":
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.Time).UnmarshalJSON(data))
+			}
+		case "Valid":
+			out.Valid = bool(in.Bool())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjsonE0c3566dEncodeDatabaseSql(out *jwriter.Writer, in sql.NullTime) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"Time\":"
+		out.RawString(prefix[1:])
+		out.Raw((in.Time).MarshalJSON())
+	}
+	{
+		const prefix string = ",\"Valid\":"
+		out.RawString(prefix)
+		out.Bool(bool(in.Valid))
+	}
+	out.RawByte('}')
 }

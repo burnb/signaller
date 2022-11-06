@@ -37,37 +37,23 @@ func easyjson1339d61cDecodeGithubComBurnbSignallerInternalRepositoryEntities(in 
 		}
 		switch key {
 		case "encryptedUid":
-			out.EncryptedUid = string(in.String())
-		case "nickName":
-			out.NickName = string(in.String())
-		case "userPhotoUrl":
-			out.UserPhotoUrl = string(in.String())
-		case "followerCount":
-			out.FollowerCount = int64(in.Int64())
+			out.Uid = string(in.String())
 		case "pnlValue":
-			out.PnlValue = float64(in.Float64())
-		case "roiValue":
-			out.RoiValue = float64(in.Float64())
-		case "weeklyRoi":
-			out.WeeklyRoi = float64(in.Float64())
+			out.Pnl = float64(in.Float64())
 		case "weeklyPnl":
-			out.WeeklyPnl = float64(in.Float64())
-		case "monthlyRoi":
-			out.MonthlyRoi = float64(in.Float64())
+			out.PnlWeekly = float64(in.Float64())
 		case "monthlyPnl":
-			out.MonthlyPnl = float64(in.Float64())
-		case "yearlyRoi":
-			out.YearlyRoi = float64(in.Float64())
+			out.PnlMonthly = float64(in.Float64())
 		case "yearlyPnl":
-			out.YearlyPnl = float64(in.Float64())
-		case "Rank":
-			out.Rank = int(in.Int())
-		case "positionShared":
-			out.PositionShared = bool(in.Bool())
-		case "deliveryPositionShared":
-			out.DeliveryPositionShared = bool(in.Bool())
-		case "LastUpdate":
-			out.LastUpdate = int64(in.Int64())
+			out.PnlYearly = float64(in.Float64())
+		case "roiValue":
+			out.Roi = float64(in.Float64())
+		case "weeklyRoi":
+			out.RoiWeekly = float64(in.Float64())
+		case "monthlyRoi":
+			out.RoiMonthly = float64(in.Float64())
+		case "yearlyRoi":
+			out.RoiYearly = float64(in.Float64())
 		default:
 			in.SkipRecursive()
 		}
@@ -85,82 +71,47 @@ func easyjson1339d61cEncodeGithubComBurnbSignallerInternalRepositoryEntities(out
 	{
 		const prefix string = ",\"encryptedUid\":"
 		out.RawString(prefix[1:])
-		out.String(string(in.EncryptedUid))
-	}
-	{
-		const prefix string = ",\"nickName\":"
-		out.RawString(prefix)
-		out.String(string(in.NickName))
-	}
-	{
-		const prefix string = ",\"userPhotoUrl\":"
-		out.RawString(prefix)
-		out.String(string(in.UserPhotoUrl))
-	}
-	{
-		const prefix string = ",\"followerCount\":"
-		out.RawString(prefix)
-		out.Int64(int64(in.FollowerCount))
+		out.String(string(in.Uid))
 	}
 	{
 		const prefix string = ",\"pnlValue\":"
 		out.RawString(prefix)
-		out.Float64(float64(in.PnlValue))
-	}
-	{
-		const prefix string = ",\"roiValue\":"
-		out.RawString(prefix)
-		out.Float64(float64(in.RoiValue))
-	}
-	{
-		const prefix string = ",\"weeklyRoi\":"
-		out.RawString(prefix)
-		out.Float64(float64(in.WeeklyRoi))
+		out.Float64(float64(in.Pnl))
 	}
 	{
 		const prefix string = ",\"weeklyPnl\":"
 		out.RawString(prefix)
-		out.Float64(float64(in.WeeklyPnl))
-	}
-	{
-		const prefix string = ",\"monthlyRoi\":"
-		out.RawString(prefix)
-		out.Float64(float64(in.MonthlyRoi))
+		out.Float64(float64(in.PnlWeekly))
 	}
 	{
 		const prefix string = ",\"monthlyPnl\":"
 		out.RawString(prefix)
-		out.Float64(float64(in.MonthlyPnl))
-	}
-	{
-		const prefix string = ",\"yearlyRoi\":"
-		out.RawString(prefix)
-		out.Float64(float64(in.YearlyRoi))
+		out.Float64(float64(in.PnlMonthly))
 	}
 	{
 		const prefix string = ",\"yearlyPnl\":"
 		out.RawString(prefix)
-		out.Float64(float64(in.YearlyPnl))
+		out.Float64(float64(in.PnlYearly))
 	}
 	{
-		const prefix string = ",\"Rank\":"
+		const prefix string = ",\"roiValue\":"
 		out.RawString(prefix)
-		out.Int(int(in.Rank))
+		out.Float64(float64(in.Roi))
 	}
 	{
-		const prefix string = ",\"positionShared\":"
+		const prefix string = ",\"weeklyRoi\":"
 		out.RawString(prefix)
-		out.Bool(bool(in.PositionShared))
+		out.Float64(float64(in.RoiWeekly))
 	}
 	{
-		const prefix string = ",\"deliveryPositionShared\":"
+		const prefix string = ",\"monthlyRoi\":"
 		out.RawString(prefix)
-		out.Bool(bool(in.DeliveryPositionShared))
+		out.Float64(float64(in.RoiMonthly))
 	}
 	{
-		const prefix string = ",\"LastUpdate\":"
+		const prefix string = ",\"yearlyRoi\":"
 		out.RawString(prefix)
-		out.Int64(int64(in.LastUpdate))
+		out.Float64(float64(in.RoiYearly))
 	}
 	out.RawByte('}')
 }

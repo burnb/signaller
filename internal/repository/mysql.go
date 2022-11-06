@@ -17,63 +17,123 @@ func NewMysql(db *sqlx.DB) *Mysql {
 	return &Mysql{db: db}
 }
 
-func (r *Mysql) DB() *sqlx.DB {
-	return r.db
+func (r *Mysql) Trader(uid string) (*entities.Trader, error) {
+	var trader entities.Trader
+	err := r.db.Get(&trader, `SELECT * FROM traders WHERE uid=?`, uid)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return &trader, nil
 }
 
-func (r *Mysql) User(uid string) (*entities.Trader, error) {
-	user := entities.Trader{}
-	err := r.db.Get(
-		&user,
-		`SELECT 
-    				uid, nickName, userPhotoUrl, followerCount, pnlValue, roiValue,
-    				weeklyPnl, weeklyRoe, monthlyPnl, monthlyRoe  
-				FROM traders
-				WHERE uid = ?`,
-		uid,
+func (r *Mysql) CreateTrader(trader *entities.Trader) error {
+	trader.CreatedAt = time.Now()
+	trader.UpdatedAt = trader.CreatedAt
+	_, err :=
+		r.db.NamedExec(
+			`INSERT INTO traders(
+						uid, pnl, roi, roi_weekly, pnl_weekly, roi_monthly, pnl_monthly, roi_yearly, pnl_yearly, 
+						position_shared, publisher, published_at, created_at, updated_at
+	    			) VALUES (
+						:uid, :pnl, :roi, :roi_weekly, :pnl_weekly, :roi_monthly, :pnl_monthly, :roi_yearly, :pnl_yearly, 
+						:position_shared, :publisher, :published_at, :created_at, :updated_at
+					)`,
+			trader,
+		)
+
+	return err
+}
+
+func (r *Mysql) UpdateTrader(trader *entities.Trader) error {
+	trader.UpdatedAt = time.Now()
+	_, err :=
+		r.db.NamedExec(
+			`UPDATE traders 
+					SET 
+						pnl=:pnl, roi=:roi, roi_weekly=:roi_weekly, pnl_weekly=:pnl_weekly, 
+						roi_monthly=:roi_monthly, pnl_monthly=:pnl_monthly, roi_yearly=:roi_yearly, pnl_yearly=:pnl_yearly, 
+						position_shared=:position_shared, publisher=:publisher, 
+						published_at=:published_at, updated_at=:updated_at
+					WHERE uid = :uid`,
+			trader,
+		)
+
+	return err
+}
+
+func (r *Mysql) RefreshPublishTime(uid string) error {
+	now := time.Now()
+	_, err := r.db.NamedExec(
+		`UPDATE traders SET updated_at=:updated_at, published_at=:published_at WHERE uid = :uid`,
+		map[string]interface{}{
+			"uid":          uid,
+			"updated_at":   now,
+			"published_at": now,
+		},
 	)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
 
-	return &user, nil
+	return err
 }
 
-func (r *Mysql) PositionById(id int64) (*entities.Position, error) {
-	position := entities.Position{Id: id}
-	err := r.db.Get(&position, "SELECT id, uid, symbol, entryPrice, markPrice, pnl, roe, amount, leverage, invested, opened, `long`, unix_timestamp(updatedAt) AS updatedAt, exchange, margin_mode FROM trader_positions WHERE id = ?", id)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	} else if err != nil {
+func (r *Mysql) Publishers() ([]*entities.Trader, error) {
+	var traders []*entities.Trader
+	err := r.db.Select(&traders, `SELECT * FROM traders WHERE publisher = 1`)
+	if err != nil {
 		return nil, err
 	}
 
-	return &position, nil
-}
-
-func (r *Mysql) FirstTraderLogAt() (*time.Time, error) {
-	var at time.Time
-	if err := r.db.Get(&at, "SELECT createdAt FROM traders_log LIMIT 1"); err != nil {
-		return nil, err
-	}
-
-	return &at, nil
+	return traders, nil
 }
 
 func (r *Mysql) OpenedPositions(trader *entities.Trader) ([]*entities.Position, error) {
-	return nil, nil
+	var positions []*entities.Position
+	err := r.db.Select(&positions, `SELECT * FROM positions WHERE trader_uid = ? AND opened = true`, trader.Uid)
+	if err != nil {
+		return nil, err
+	}
+
+	return positions, nil
 }
 
-func (r *Mysql) TradersWithSub() ([]*entities.Trader, error) {
-	return nil, nil
+func (r *Mysql) CreatePosition(position *entities.Position) error {
+	res, err :=
+		r.db.NamedExec(
+			`INSERT INTO positions(
+					 trader_uid, symbol, long, entry_price, pnl, roe, amount, leverage, invested, opened, 
+					 exchange, margin_mode, hedged, created_at, updated_at, closed_at
+	    			) VALUES (
+						:trader_uid, :symbol, :long, :entry_price, :pnl, :roe, :amount, :leverage, :invested, :opened, 
+					 	:exchange, :margin_mode, :hedged, :created_at, :updated_at, :closed_at
+					)`,
+			position,
+		)
+	if err != nil {
+		return err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	position.Id = id
+
+	return nil
 }
 
 func (r *Mysql) UpdatePosition(position *entities.Position) error {
-	return nil
-}
+	_, err := r.db.NamedExec(
+		`UPDATE positions 
+				SET 
+				     trader_uid=:trader_uid, symbol=:symbol, long=:long, entry_price=:entry_price, pnl=:pnl, roe=:roe, 
+				     amount=:amount, leverage=:leverage, invested=:invested, opened=:opened, exchange=:exchange, 
+				     margin_mode=:margin_mode, hedged=:hedged, 
+				     created_at=:created_at, updated_at=:updated_at, closed_at=:closed_at
+				WHERE id = :id`,
+		position,
+	)
 
-func (r *Mysql) ClosePosition(position *entities.Position) error {
-	return nil
+	return err
 }

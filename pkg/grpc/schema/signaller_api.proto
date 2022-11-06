@@ -19,18 +19,18 @@ enum Direction {
   SHORT = 1;
 }
 
-enum Command {
+enum Type {
   CREATE = 0;
   UPDATE = 1;
   CLOSE = 2;
 }
 
 message PositionEvent {
-  string Symbol = 1;
-  string Uid = 2;
-  Direction Direction = 3;
-  int64 PositionId = 4;
-  Command Command = 5;
+  int64 PositionId = 1;
+  string Symbol = 2;
+  string TraderUid = 3;
+  Direction Direction = 4;
+  Type Type = 5;
   string Exchange = 6;
   uint32 Leverage = 7;
   double EntryPrice = 8;

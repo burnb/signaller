@@ -69,8 +69,8 @@ func (c *Client) Init() error {
 	return nil
 }
 
-func (c *Client) Subscribe() (<-chan *proto.PositionEvent, error) {
-	stream, err := c.client.Stream(context.Background(), &proto.SubscribeRequest{})
+func (c *Client) Subscribe(uids []string) (<-chan *proto.PositionEvent, error) {
+	stream, err := c.client.Stream(context.Background(), &proto.SubscribeRequest{Uids: uids})
 	if err != nil {
 		return nil, fmt.Errorf("unable to get order event stream %w", err)
 	}

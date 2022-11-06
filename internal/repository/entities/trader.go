@@ -1,24 +1,26 @@
 package entities
 
+import (
+	"time"
+)
+
 //go:generate easyjson trader.go
 
 // easyjson:json
 type Trader struct {
-	EncryptedUid           string      `db:"uid" json:"encryptedUid"`
-	NickName               string      `db:"nickName" json:"nickName"`
-	UserPhotoUrl           string      `db:"userPhotoUrl" json:"userPhotoUrl"`
-	FollowerCount          int64       `db:"followerCount" json:"followerCount"`
-	PnlValue               float64     `db:"pnlValue" json:"pnlValue"`
-	RoiValue               float64     `db:"roiValue" json:"roiValue"`
-	WeeklyRoi              float64     `db:"weeklyRoe" json:"weeklyRoi"`
-	WeeklyPnl              float64     `db:"weeklyPnl" json:"weeklyPnl"`
-	MonthlyRoi             float64     `db:"monthlyRoe" json:"monthlyRoi"`
-	MonthlyPnl             float64     `db:"monthlyPnl" json:"monthlyPnl"`
-	YearlyRoi              float64     `db:"yearlyRoe" json:"yearlyRoi"`
-	YearlyPnl              float64     `db:"yearlyPnl" json:"yearlyPnl"`
-	Rank                   int         `db:"rank"`
-	PositionShared         bool        `json:"positionShared"`
-	DeliveryPositionShared bool        `json:"deliveryPositionShared"`
-	LastUpdate             int64       `db:"lastUpdate"`
-	Positions              []*Position `json:"-"`
+	Uid            string               `db:"uid" json:"encryptedUid"`
+	Pnl            float64              `db:"pnl" json:"pnlValue"`
+	PnlWeekly      float64              `db:"pnl_weekly" json:"weeklyPnl"`
+	PnlMonthly     float64              `db:"pnl_monthly" json:"monthlyPnl"`
+	PnlYearly      float64              `db:"pnl_yearly" json:"yearlyPnl"`
+	Roi            float64              `db:"roi" json:"roiValue"`
+	RoiWeekly      float64              `db:"roi_weekly" json:"weeklyRoi"`
+	RoiMonthly     float64              `db:"roi_monthly" json:"monthlyRoi"`
+	RoiYearly      float64              `db:"roi_yearly" json:"yearlyRoi"`
+	PositionShared bool                 `db:"position_shared" json:"positionShared"`
+	Publisher      bool                 `db:"publisher" json:"-"`
+	PublishedAt    time.Time            `db:"published_at" json:"-"`
+	CreatedAt      time.Time            `db:"created_at" json:"-"`
+	UpdatedAt      time.Time            `db:"updated_at" json:"-"`
+	Positions      map[string]*Position `json:"-"`
 }

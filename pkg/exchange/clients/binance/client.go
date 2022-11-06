@@ -63,15 +63,6 @@ func (c *Client) TopTraders() (traders []*entities.Trader, err error) {
 	return data.Data, nil
 }
 
-func (c *Client) Traders(uids []string) (traders []*entities.Trader, err error) {
-	data := &TraderResponse{}
-	if !data.Success {
-		return nil, errors.New(data.Message)
-	}
-
-	return data.Data, nil
-}
-
 func (c *Client) TraderPositions(uid string) ([]*entities.Position, error) {
 	var err error
 	var body []byte
@@ -100,11 +91,11 @@ func (c *Client) TraderPositions(uid string) ([]*entities.Position, error) {
 	}
 
 	for _, pos := range data.Data.OtherPositionRetList {
-		pos.UserId = uid
+		pos.Symbol = strings.ReplaceAll(pos.Symbol, "-SWAP", "")
+		pos.TraderUID = uid
 		pos.Opened = true
 		pos.Long = pos.Amount > 0
-		pos.UpdateTimestamp = pos.UpdateTimestamp / 1000
-		pos.Exchange = c.name
+		pos.Exchange = entities.ExchangeBinance
 		pos.MarginMode = entities.MarginModeCross
 		for _, pos2 := range data.Data.OtherPositionRetList {
 			if pos.Symbol == pos2.Symbol && pos.Amount == -pos2.Amount {
@@ -126,11 +117,11 @@ func (c *Client) RefreshTraders(traders []*entities.Trader) {
 		go func() {
 			for trader := range tradersCh {
 				if err := c.refreshTraderBaseInfo(trader); err != nil {
-					c.log.Error("unable to get trader base info", zap.String("uid", trader.EncryptedUid), zap.Error(err))
+					c.log.Error("unable to get trader base info", zap.String("uid", trader.Uid), zap.Error(err))
 					continue
 				}
 				if err := c.refreshTraderStats(trader); err != nil {
-					c.log.Error("unable to get trader stats", zap.String("uid", trader.EncryptedUid), zap.Error(err))
+					c.log.Error("unable to get trader stats", zap.String("uid", trader.Uid), zap.Error(err))
 					continue
 				}
 			}
@@ -145,7 +136,7 @@ func (c *Client) RefreshTraders(traders []*entities.Trader) {
 	wg.Wait()
 }
 
-func (c *Client) refreshTraderStats(user *entities.Trader) error {
+func (c *Client) refreshTraderStats(trader *entities.Trader) error {
 	var err error
 	var body []byte
 	for i := 0; i < DefaultRetry; i++ {
@@ -153,7 +144,7 @@ func (c *Client) refreshTraderStats(user *entities.Trader) error {
 			true,
 			http.MethodPost,
 			`https://www.binance.com/bapi/futures/v1/public/future/leaderboard/getOtherPerformance`,
-			fmt.Sprintf(`{"encryptedUid":"%s","tradeType":"PERPETUAL"}`, user.EncryptedUid),
+			fmt.Sprintf(`{"encryptedUid":"%s","tradeType":"PERPETUAL"}`, trader.Uid),
 		)
 		if err != nil {
 			c.log.Error("unable to do trader stats request", zap.Error(err))
@@ -177,22 +168,22 @@ func (c *Client) refreshTraderStats(user *entities.Trader) error {
 
 	for _, period := range data.Data {
 		if period.PeriodType == "EXACT_WEEKLY" && period.StatisticsType == "ROI" {
-			user.WeeklyRoi = period.Value
+			trader.RoiWeekly = period.Value
 		}
 		if period.PeriodType == "EXACT_WEEKLY" && period.StatisticsType == "PNL" {
-			user.WeeklyPnl = period.Value
+			trader.PnlWeekly = period.Value
 		}
 		if period.PeriodType == "EXACT_MONTHLY" && period.StatisticsType == "ROI" {
-			user.MonthlyRoi = period.Value
+			trader.RoiMonthly = period.Value
 		}
 		if period.PeriodType == "EXACT_MONTHLY" && period.StatisticsType == "PNL" {
-			user.MonthlyPnl = period.Value
+			trader.PnlMonthly = period.Value
 		}
 		if period.PeriodType == "EXACT_YEARLY" && period.StatisticsType == "ROI" {
-			user.YearlyRoi = period.Value
+			trader.RoiYearly = period.Value
 		}
 		if period.PeriodType == "EXACT_YEARLY" && period.StatisticsType == "PNL" {
-			user.YearlyPnl = period.Value
+			trader.PnlYearly = period.Value
 		}
 	}
 	return nil
@@ -206,7 +197,7 @@ func (c *Client) refreshTraderBaseInfo(trader *entities.Trader) error {
 			true,
 			http.MethodPost,
 			`https://www.binance.com/bapi/futures/v2/public/future/leaderboard/getOtherLeaderboardBaseInfo`,
-			fmt.Sprintf(`{"encryptedUid":"%s"}`, trader.EncryptedUid),
+			fmt.Sprintf(`{"encryptedUid":"%s"}`, trader.Uid),
 		)
 		if err != nil {
 			c.log.Error("unable to do trader base info request", zap.Error(err))
@@ -219,8 +210,6 @@ func (c *Client) refreshTraderBaseInfo(trader *entities.Trader) error {
 		return err
 	}
 
-	c.log.Debug("got user base info", zap.String("uid", trader.EncryptedUid))
-
 	data := BaseInfoResponse{}
 	err = data.UnmarshalJSON(body)
 	if err != nil {
@@ -230,9 +219,7 @@ func (c *Client) refreshTraderBaseInfo(trader *entities.Trader) error {
 		return errors.New(data.Message)
 	}
 
-	trader.NickName = data.Data.NickName
 	trader.PositionShared = data.Data.PositionShared
-	trader.UserPhotoUrl = data.Data.UserPhotoUrl
 
 	return nil
 }

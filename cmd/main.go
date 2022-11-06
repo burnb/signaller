@@ -46,10 +46,10 @@ func main() {
 	if dbErr != nil {
 		log.Fatal("unable to open db", zap.Error(dbErr))
 	}
+	db.SetConnMaxLifetime(time.Minute * 5)
+	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(5)
 	dbClient := db
-	dbClient.SetConnMaxLifetime(time.Minute * 5)
-	dbClient.SetMaxIdleConns(5)
-	dbClient.SetMaxOpenConns(5)
 	defer func() { _ = dbClient.Close() }()
 
 	repo := repository.NewMysql(dbClient)

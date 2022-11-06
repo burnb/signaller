@@ -13,6 +13,8 @@ type ExchangeClient interface {
 }
 
 type publisher interface {
+	FollowTraderUidCh() <-chan string
+	UnFollowTraderUidCh() <-chan string
 	Publish(event *proto.PositionEvent) error
 }
 
