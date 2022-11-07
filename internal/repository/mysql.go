@@ -90,7 +90,7 @@ func (r *Mysql) Publishers() ([]*entities.Trader, error) {
 
 func (r *Mysql) OpenedPositions(trader *entities.Trader) ([]*entities.Position, error) {
 	var positions []*entities.Position
-	err := r.db.Select(&positions, `SELECT * FROM positions WHERE trader_uid = ? AND opened = true`, trader.Uid)
+	err := r.db.Select(&positions, `SELECT * FROM positions WHERE trader_uid = ? AND closed_at IS NULL`, trader.Uid)
 	if err != nil {
 		return nil, err
 	}
@@ -99,13 +99,16 @@ func (r *Mysql) OpenedPositions(trader *entities.Trader) ([]*entities.Position, 
 }
 
 func (r *Mysql) CreatePosition(position *entities.Position) error {
+	if position.CreateTimestamp == 0 {
+		position.CreatedAt = time.Now()
+	}
 	res, err :=
 		r.db.NamedExec(
 			`INSERT INTO positions(
-					 trader_uid, symbol, long, entry_price, pnl, roe, amount, leverage, invested, opened, 
+					 trader_uid, symbol, positions.long, entry_price, pnl, roe, amount, leverage,
 					 exchange, margin_mode, hedged, created_at, updated_at, closed_at
 	    			) VALUES (
-						:trader_uid, :symbol, :long, :entry_price, :pnl, :roe, :amount, :leverage, :invested, :opened, 
+						:trader_uid, :symbol, :long, :entry_price, :pnl, :roe, :amount, :leverage,
 					 	:exchange, :margin_mode, :hedged, :created_at, :updated_at, :closed_at
 					)`,
 			position,
@@ -127,10 +130,9 @@ func (r *Mysql) UpdatePosition(position *entities.Position) error {
 	_, err := r.db.NamedExec(
 		`UPDATE positions 
 				SET 
-				     trader_uid=:trader_uid, symbol=:symbol, long=:long, entry_price=:entry_price, pnl=:pnl, roe=:roe, 
-				     amount=:amount, leverage=:leverage, invested=:invested, opened=:opened, exchange=:exchange, 
-				     margin_mode=:margin_mode, hedged=:hedged, 
-				     created_at=:created_at, updated_at=:updated_at, closed_at=:closed_at
+				     trader_uid=:trader_uid, symbol=:symbol, positions.long=:long, entry_price=:entry_price, pnl=:pnl, roe=:roe, 
+				     amount=:amount, leverage=:leverage, exchange=:exchange, 
+				     margin_mode=:margin_mode, hedged=:hedged, updated_at=:updated_at, closed_at=:closed_at
 				WHERE id = :id`,
 		position,
 	)

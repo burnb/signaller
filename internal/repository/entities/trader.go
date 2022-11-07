@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -19,7 +20,7 @@ type Trader struct {
 	RoiYearly      float64              `db:"roi_yearly" json:"yearlyRoi"`
 	PositionShared bool                 `db:"position_shared" json:"positionShared"`
 	Publisher      bool                 `db:"publisher" json:"-"`
-	PublishedAt    time.Time            `db:"published_at" json:"-"`
+	PublishedAt    sql.NullTime         `db:"published_at" json:"-"`
 	CreatedAt      time.Time            `db:"created_at" json:"-"`
 	UpdatedAt      time.Time            `db:"updated_at" json:"-"`
 	Positions      map[string]*Position `json:"-"`

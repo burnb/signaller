@@ -125,7 +125,7 @@ func (s *Server) Publish(event *proto.PositionEvent) error {
 				return false
 			}
 
-			subscription, ok := v.(Subscription)
+			subscription, ok := v.(*Subscription)
 			if !ok {
 				s.log.Error("unable to cast subscription type", zap.String("type", fmt.Sprintf("%T", v)))
 

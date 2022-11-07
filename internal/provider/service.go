@@ -97,6 +97,11 @@ func (s *Service) runPublisherFollowWorker() {
 
 				s.exchangeClient.RefreshTraders([]*entities.Trader{trader})
 
+				if !trader.PositionShared {
+					s.log.Warn("trader doesn't show his positions", zap.String("uid", trader.Uid))
+					continue
+				}
+
 				if err := s.repo.CreateTrader(trader); err != nil {
 					s.log.Error("unable to create trader", zap.Error(err))
 					continue
@@ -185,6 +190,9 @@ func (s *Service) runTradersRefreshWorker() {
 						zap.Error(err),
 					)
 				}
+				if !trader.PositionShared {
+					s.log.Warn("trader hide his positions", zap.String("uid", trader.Uid))
+				}
 			}
 
 			time.Sleep(24 * time.Hour)
@@ -258,7 +266,6 @@ func (s *Service) handleNewTraderPositions(trader *entities.Trader, newPositions
 			}
 		}
 		if !exists {
-			oldPosition.Opened = false
 			oldPosition.ClosedAt = sql.NullTime{Time: time.Now(), Valid: true}
 			if err := s.repo.UpdatePosition(oldPosition); err != nil {
 				s.log.Fatal("unable to close position", zap.Int64("id", oldPosition.Id), zap.Error(err))
@@ -296,7 +303,7 @@ func (s *Service) push(events []*proto.PositionEvent) {
 			s.log.Error(
 				"unable to push position event",
 				zap.Int64("id", event.PositionId),
-				zap.String("type", proto.Type_name[event.Type]),
+				zap.String("type", proto.Type_name[int32(event.Type)]),
 				zap.Error(err),
 			)
 		}

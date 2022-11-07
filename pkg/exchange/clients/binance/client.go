@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/adshao/go-binance/v2/futures"
 	"go.uber.org/zap"
@@ -50,6 +51,9 @@ func (c *Client) TopTraders() (traders []*entities.Trader, err error) {
 
 		break
 	}
+	if err != nil {
+		return nil, err
+	}
 
 	data := &TraderResponse{}
 	err = data.UnmarshalJSON(body)
@@ -74,11 +78,13 @@ func (c *Client) TraderPositions(uid string) ([]*entities.Position, error) {
 			fmt.Sprintf(`{"encryptedUid":"%s","tradeType":"PERPETUAL"}`, uid),
 		)
 		if err != nil {
-			c.log.Error("unable to do trader position request", zap.Error(err))
 			continue
 		}
 
 		break
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	data := &PositionsResponse{}
@@ -93,10 +99,10 @@ func (c *Client) TraderPositions(uid string) ([]*entities.Position, error) {
 	for _, pos := range data.Data.OtherPositionRetList {
 		pos.Symbol = strings.ReplaceAll(pos.Symbol, "-SWAP", "")
 		pos.TraderUID = uid
-		pos.Opened = true
 		pos.Long = pos.Amount > 0
 		pos.Exchange = entities.ExchangeBinance
 		pos.MarginMode = entities.MarginModeCross
+		pos.UpdatedAt = time.UnixMilli(pos.UpdateTimestamp)
 		for _, pos2 := range data.Data.OtherPositionRetList {
 			if pos.Symbol == pos2.Symbol && pos.Amount == -pos2.Amount {
 				pos.MarginMode = entities.MarginModeHedge
@@ -109,8 +115,7 @@ func (c *Client) TraderPositions(uid string) ([]*entities.Position, error) {
 }
 
 func (c *Client) RefreshTraders(traders []*entities.Trader) {
-	tradersCh := make(chan *entities.Trader, c.workersCnt)
-	defer close(tradersCh)
+	tradersCh := make(chan *entities.Trader)
 	wg := &sync.WaitGroup{}
 	for w := 0; w < int(c.workersCnt); w++ {
 		wg.Add(1)
@@ -133,6 +138,8 @@ func (c *Client) RefreshTraders(traders []*entities.Trader) {
 		tradersCh <- trader
 	}
 
+	close(tradersCh)
+
 	wg.Wait()
 }
 
@@ -147,7 +154,6 @@ func (c *Client) refreshTraderStats(trader *entities.Trader) error {
 			fmt.Sprintf(`{"encryptedUid":"%s","tradeType":"PERPETUAL"}`, trader.Uid),
 		)
 		if err != nil {
-			c.log.Error("unable to do trader stats request", zap.Error(err))
 			continue
 		}
 
@@ -200,7 +206,6 @@ func (c *Client) refreshTraderBaseInfo(trader *entities.Trader) error {
 			fmt.Sprintf(`{"encryptedUid":"%s"}`, trader.Uid),
 		)
 		if err != nil {
-			c.log.Error("unable to do trader base info request", zap.Error(err))
 			continue
 		}
 

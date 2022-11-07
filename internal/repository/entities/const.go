@@ -4,6 +4,8 @@ const (
 	MarginModeCross = MarginMode(iota)
 	MarginModeIsolated
 	MarginModeHedge
+)
 
+const (
 	ExchangeBinance = Exchange(iota)
 )
