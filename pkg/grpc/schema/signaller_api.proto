@@ -7,11 +7,17 @@ import "google/protobuf/timestamp.proto";
 option go_package = ".;proto";
 
 service SignallerApi {
-  rpc Stream(SubscribeRequest) returns (stream PositionEvent) {}
+  rpc Stream(stream SubscriptionRequest) returns (stream PositionEvent) {}
 }
 
-message SubscribeRequest {
-  repeated string Uids = 1;
+enum SubscriptionRequestType {
+  ADD = 0;
+  REMOVE = 1;
+}
+
+message SubscriptionRequest {
+  SubscriptionRequestType Type = 1;
+  repeated string Uids = 2;
 }
 
 enum Direction {
@@ -33,7 +39,8 @@ message PositionEvent {
   Type Type = 5;
   string Exchange = 6;
   uint32 Leverage = 7;
-  double EntryPrice = 8;
-  google.protobuf.Timestamp CreatedAt = 9;
-  bool Hedged = 10;
+  double AmountChange = 8;
+  double EntryPrice = 9;
+  google.protobuf.Timestamp CreatedAt = 10;
+  bool Hedged = 11;
 }

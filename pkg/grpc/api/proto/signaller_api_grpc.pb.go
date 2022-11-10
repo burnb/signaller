@@ -22,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SignallerApiClient interface {
-	Stream(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (SignallerApi_StreamClient, error)
+	Stream(ctx context.Context, opts ...grpc.CallOption) (SignallerApi_StreamClient, error)
 }
 
 type signallerApiClient struct {
@@ -33,28 +33,27 @@ func NewSignallerApiClient(cc grpc.ClientConnInterface) SignallerApiClient {
 	return &signallerApiClient{cc}
 }
 
-func (c *signallerApiClient) Stream(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (SignallerApi_StreamClient, error) {
+func (c *signallerApiClient) Stream(ctx context.Context, opts ...grpc.CallOption) (SignallerApi_StreamClient, error) {
 	stream, err := c.cc.NewStream(ctx, &SignallerApi_ServiceDesc.Streams[0], "/signaller.SignallerApi/Stream", opts...)
 	if err != nil {
 		return nil, err
 	}
 	x := &signallerApiStreamClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
 	return x, nil
 }
 
 type SignallerApi_StreamClient interface {
+	Send(*SubscriptionRequest) error
 	Recv() (*PositionEvent, error)
 	grpc.ClientStream
 }
 
 type signallerApiStreamClient struct {
 	grpc.ClientStream
+}
+
+func (x *signallerApiStreamClient) Send(m *SubscriptionRequest) error {
+	return x.ClientStream.SendMsg(m)
 }
 
 func (x *signallerApiStreamClient) Recv() (*PositionEvent, error) {
@@ -69,7 +68,7 @@ func (x *signallerApiStreamClient) Recv() (*PositionEvent, error) {
 // All implementations must embed UnimplementedSignallerApiServer
 // for forward compatibility
 type SignallerApiServer interface {
-	Stream(*SubscribeRequest, SignallerApi_StreamServer) error
+	Stream(SignallerApi_StreamServer) error
 	mustEmbedUnimplementedSignallerApiServer()
 }
 
@@ -77,7 +76,7 @@ type SignallerApiServer interface {
 type UnimplementedSignallerApiServer struct {
 }
 
-func (UnimplementedSignallerApiServer) Stream(*SubscribeRequest, SignallerApi_StreamServer) error {
+func (UnimplementedSignallerApiServer) Stream(SignallerApi_StreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method Stream not implemented")
 }
 func (UnimplementedSignallerApiServer) mustEmbedUnimplementedSignallerApiServer() {}
@@ -94,15 +93,12 @@ func RegisterSignallerApiServer(s grpc.ServiceRegistrar, srv SignallerApiServer)
 }
 
 func _SignallerApi_Stream_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(SubscribeRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(SignallerApiServer).Stream(m, &signallerApiStreamServer{stream})
+	return srv.(SignallerApiServer).Stream(&signallerApiStreamServer{stream})
 }
 
 type SignallerApi_StreamServer interface {
 	Send(*PositionEvent) error
+	Recv() (*SubscriptionRequest, error)
 	grpc.ServerStream
 }
 
@@ -112,6 +108,14 @@ type signallerApiStreamServer struct {
 
 func (x *signallerApiStreamServer) Send(m *PositionEvent) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func (x *signallerApiStreamServer) Recv() (*SubscriptionRequest, error) {
+	m := new(SubscriptionRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // SignallerApi_ServiceDesc is the grpc.ServiceDesc for SignallerApi service.
@@ -126,6 +130,7 @@ var SignallerApi_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "Stream",
 			Handler:       _SignallerApi_Stream_Handler,
 			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "signaller_api.proto",

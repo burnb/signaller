@@ -208,6 +208,7 @@ func (s *Service) handleNewTraderPositions(trader *entities.Trader, newPositions
 			trader.Positions = make(map[string]*entities.Position)
 		}
 
+		var amountChange float64
 		eventType := proto.Type_CREATE
 		oldPosition, ok := trader.Positions[newPosition.Key()]
 		if ok {
@@ -216,6 +217,7 @@ func (s *Service) handleNewTraderPositions(trader *entities.Trader, newPositions
 			}
 			eventType = proto.Type_UPDATE
 			newPosition.Id = oldPosition.Id
+			amountChange = newPosition.Amount / oldPosition.Amount
 			if err := s.repo.UpdatePosition(newPosition); err != nil {
 				s.log.Fatal("unable to update position", zap.Int64("id", newPosition.Id), zap.Error(err))
 			}
@@ -236,16 +238,17 @@ func (s *Service) handleNewTraderPositions(trader *entities.Trader, newPositions
 		}
 
 		event := &proto.PositionEvent{
-			Symbol:     newPosition.Symbol,
-			TraderUid:  newPosition.TraderUID,
-			Direction:  direction,
-			PositionId: newPosition.Id,
-			Type:       eventType,
-			Exchange:   s.exchangeClient.Name(),
-			Leverage:   uint32(newPosition.Leverage),
-			EntryPrice: newPosition.EntryPrice,
-			CreatedAt:  timestamppb.New(newPosition.UpdatedAt),
-			Hedged:     hedged,
+			Symbol:       newPosition.Symbol,
+			TraderUid:    newPosition.TraderUID,
+			Direction:    direction,
+			PositionId:   newPosition.Id,
+			Type:         eventType,
+			Exchange:     s.exchangeClient.Name(),
+			Leverage:     uint32(newPosition.Leverage),
+			AmountChange: amountChange,
+			EntryPrice:   newPosition.EntryPrice,
+			CreatedAt:    timestamppb.New(newPosition.UpdatedAt),
+			Hedged:       hedged,
 		}
 		if eventType == proto.Type_CREATE {
 			createEvents = append(createEvents, event)

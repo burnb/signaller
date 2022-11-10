@@ -11,10 +11,8 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	grpcKeepalive "google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 
 	"github.com/burnb/signaller/pkg/grpc/api/proto"
 )
@@ -27,35 +25,22 @@ const (
 )
 
 type Server struct {
-	address             string
-	log                 *zap.Logger
-	grpcServer          *grpc.Server
-	listener            net.Listener
-	subscriptions       sync.Map
-	followTraderUidCh   chan string
-	unFollowTraderUidCh chan string
+	address       string
+	log           *zap.Logger
+	grpcServer    *grpc.Server
+	listener      net.Listener
+	subscriptions sync.Map
+	followCh      chan string
+	unFollowCh    chan string
 
 	proto.UnimplementedSignallerApiServer
 }
 
 func NewServer(address string, log *zap.Logger) *Server {
 	return &Server{
-		address:             address,
-		log:                 log.Named(serverName),
-		followTraderUidCh:   make(chan string, 10),
-		unFollowTraderUidCh: make(chan string, 10),
-	}
-}
-
-func (s *Server) Init() error {
-	listener, err := net.Listen("tcp", s.address)
-	if err != nil {
-		return fmt.Errorf("unable to listen port %w", err)
-	}
-	s.listener = listener
-
-	go func() {
-		options := []grpc.ServerOption{
+		address: address,
+		log:     log.Named(serverName),
+		grpcServer: grpc.NewServer(
 			grpc.MaxRecvMsgSize(defaultServerMaxReceiveMessageSize),
 			grpc.MaxSendMsgSize(defaultServerMaxSendMessageSize),
 			grpc.KeepaliveEnforcementPolicy(grpcKeepalive.EnforcementPolicy{
@@ -67,34 +52,42 @@ func (s *Server) Init() error {
 				Timeout: 1 * time.Second,
 			}),
 			grpc.UnaryInterceptor(otgrpc.OpenTracingServerInterceptor(opentracing.GlobalTracer())),
-		}
-		s.grpcServer = grpc.NewServer(options...)
-		reflection.Register(s.grpcServer)
-		proto.RegisterSignallerApiServer(s.grpcServer, s)
+		),
+		followCh:   make(chan string, 10),
+		unFollowCh: make(chan string, 10),
+	}
+}
 
-		s.log.Info("grpc serve success")
+func (s *Server) Init() error {
+	listener, err := net.Listen("tcp", s.address)
+	if err != nil {
+		return fmt.Errorf("unable to listen port %w", err)
+	}
+	s.listener = listener
 
-		if err := s.grpcServer.Serve(s.listener); err != nil {
-			s.log.Fatal("unable to serve", zap.Error(err))
-		}
-	}()
+	reflection.Register(s.grpcServer)
+	proto.RegisterSignallerApiServer(s.grpcServer, s)
+
+	go s.serve()
 
 	return nil
 }
 
-func (s *Server) Stream(req *proto.SubscribeRequest, stream proto.SignallerApi_StreamServer) error {
-	if req.Uids == nil {
-		return status.Errorf(codes.InvalidArgument, "empty uid list")
-	}
+func (s *Server) serve() {
+	s.log.Info("grpc serve success")
 
-	uids := make(map[string]struct{})
-	for _, uid := range req.Uids {
-		uids[uid] = struct{}{}
-		s.followTraderUidCh <- uid
+	if err := s.grpcServer.Serve(s.listener); err != nil {
+		s.log.Fatal("unable to serve", zap.Error(err))
 	}
+}
 
+func (s *Server) Stream(stream proto.SignallerApi_StreamServer) error {
 	cUid := uuid.New().String()
-	s.subscriptions.Store(cUid, NewSubscription(uids, stream))
+	subscription := NewSubscription(stream)
+	s.subscriptions.Store(cUid, subscription)
+
+	go s.runStreamWorker(subscription)
+
 	s.log.Info("client connected", zap.String("sub", cUid))
 
 	<-stream.Context().Done()
@@ -106,12 +99,53 @@ func (s *Server) Stream(req *proto.SubscribeRequest, stream proto.SignallerApi_S
 	return nil
 }
 
+func (s *Server) runStreamWorker(subscription *Subscription) {
+	for {
+		req, err := subscription.stream.Recv()
+		if err != nil {
+			select {
+			case <-subscription.stream.Context().Done():
+				return
+			default:
+				s.log.Error("unable to receive stream", zap.Error(err))
+
+				return
+			}
+		}
+
+		if req.GetType() == proto.SubscriptionRequestType_ADD {
+			for _, uid := range req.Uids {
+				subscription.uids[uid] = struct{}{}
+				s.followCh <- uid
+			}
+		} else {
+			for _, uid := range req.Uids {
+				delete(subscription.uids, uid)
+				exist := false
+				s.subscriptions.Range(func(k, v any) bool {
+					subscription, _ := v.(*Subscription)
+					if _, ok := subscription.uids[uid]; ok {
+						exist = true
+
+						return false
+					}
+
+					return true
+				})
+				if !exist {
+					s.unFollowCh <- uid
+				}
+			}
+		}
+	}
+}
+
 func (s *Server) FollowTraderUidCh() <-chan string {
-	return s.followTraderUidCh
+	return s.followCh
 }
 
 func (s *Server) UnFollowTraderUidCh() <-chan string {
-	return s.unFollowTraderUidCh
+	return s.unFollowCh
 }
 
 func (s *Server) Publish(event *proto.PositionEvent) error {
