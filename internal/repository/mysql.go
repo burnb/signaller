@@ -40,7 +40,7 @@ func (r *Mysql) Shutdown() {
 	if err := r.db.Close(); err != nil {
 		r.logger.Error("unable to close db client", zap.Error(err))
 	}
-	r.logger.Info("db client stopped gracefully")
+	r.logger.Debug("db client has been stopped")
 }
 
 func (r *Mysql) Trader(uid string) (*entities.Trader, error) {

@@ -68,7 +68,7 @@ func (s *Server) Init() error {
 }
 
 func (s *Server) serve() {
-	s.logger.Info("grpc serve success")
+	s.logger.Debug("grpc serve success")
 
 	if err := s.grpcServer.Serve(s.listener); err != nil {
 		s.logger.Fatal("unable to serve", zap.Error(err))
