@@ -54,6 +54,8 @@ func easyjson1339d61cDecodeGithubComBurnbSignallerInternalRepositoryEntities(in 
 			out.RoiMonthly = float64(in.Float64())
 		case "yearlyRoi":
 			out.RoiYearly = float64(in.Float64())
+		case "positionShared":
+			out.PositionShared = bool(in.Bool())
 		default:
 			in.SkipRecursive()
 		}
@@ -112,6 +114,11 @@ func easyjson1339d61cEncodeGithubComBurnbSignallerInternalRepositoryEntities(out
 		const prefix string = ",\"yearlyRoi\":"
 		out.RawString(prefix)
 		out.Float64(float64(in.RoiYearly))
+	}
+	{
+		const prefix string = ",\"positionShared\":"
+		out.RawString(prefix)
+		out.Bool(bool(in.PositionShared))
 	}
 	out.RawByte('}')
 }

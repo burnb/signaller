@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	ServiceName = "Metric service"
+	loggerName = "MetricService"
 
-	DefaultHttpReadTimeout  = 5 * time.Second
-	DefaultHttpWriteTimeout = 10 * time.Second
+	defaultHttpReadTimeout  = 5 * time.Second
+	defaultHttpWriteTimeout = 10 * time.Second
 )

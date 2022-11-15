@@ -6,9 +6,8 @@ import (
 	"time"
 )
 
-//go:generate easyjson position.go
+//go:generate easyjson -all position.go
 
-// easyjson:json
 type Position struct {
 	Id              int64        `json:"-"`
 	TraderUID       string       `json:"-" db:"trader_uid"`

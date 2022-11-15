@@ -1,4 +1,4 @@
-package signaller
+package api
 
 import (
 	"context"
@@ -16,13 +16,6 @@ import (
 	"github.com/burnb/signaller/pkg/grpc/api/proto"
 )
 
-const (
-	clientName = "SignallerClientGRPC"
-
-	defaultClientMaxReceiveMessageSize = 1024 * 1024
-	defaultClientMaxSendMessageSize    = 1024 * 1024
-)
-
 type Client struct {
 	address    string
 	publishers sync.Map
@@ -38,7 +31,7 @@ func NewClient(address string, publishers []string, log *zap.Logger) *Client {
 		address:    address,
 		followCh:   make(chan []string),
 		unfollowCh: make(chan []string),
-		log:        log.Named(clientName),
+		log:        log.Named(loggerName),
 	}
 	for _, publisher := range publishers {
 		c.publishers.Store(publisher, struct{}{})

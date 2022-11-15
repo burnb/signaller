@@ -4,19 +4,18 @@ import (
 	"github.com/burnb/signaller/internal/repository/entities"
 )
 
-//go:generate easyjson structs.go
+//go:generate easyjson -all structs.go
 
 type SymbolInfo struct {
 	Symbol            string
 	Quote             string
 	Base              string
 	PricePrecision    int
-	MinQuantity       float64 // Количество токенов
-	MinSize           float64 // Размер позиции в USDT
+	MinQuantity       float64
+	MinSize           float64
 	QuantityPrecision int
 }
 
-// easyjson:json
 type TraderResponse struct {
 	Code          string             `json:"code"`
 	Message       string             `json:"message"`
@@ -25,7 +24,6 @@ type TraderResponse struct {
 	Success       bool               `json:"success"`
 }
 
-// easyjson:json
 type BaseInfo struct {
 	DeliveryPositionShared bool   `json:"deliveryPositionShared"`
 	FollowerCount          int    `json:"followerCount"`
@@ -37,7 +35,6 @@ type BaseInfo struct {
 	UserPhotoUrl           string `json:"userPhotoUrl"`
 }
 
-// easyjson:json
 type BaseInfoResponse struct {
 	Code          string    `json:"code"`
 	Message       string    `json:"message"`
@@ -46,7 +43,6 @@ type BaseInfoResponse struct {
 	Success       bool      `json:"success"`
 }
 
-// easyjson:json
 type Stats struct {
 	PeriodType     string  `json:"periodType"`
 	StatisticsType string  `json:"statisticsType"`
@@ -54,7 +50,6 @@ type Stats struct {
 	Rank           int     `json:"rank"`
 }
 
-// easyjson:json
 type StatsResponse struct {
 	Code          string   `json:"code"`
 	Message       string   `json:"message"`
@@ -63,7 +58,6 @@ type StatsResponse struct {
 	Success       bool     `json:"success"`
 }
 
-// easyjson:json
 type PositionsResponse struct {
 	Code          string `json:"code"`
 	Message       string `json:"message"`

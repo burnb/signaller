@@ -1,7 +1,7 @@
 package binance
 
 const (
-	Name = "binance"
+	name = "binance"
 
 	DefaultWorkersCnt = 100
 	DefaultRetry      = 10

@@ -5,7 +5,8 @@ import (
 )
 
 const (
-	LoggerNameServiceWorker = "LeaderboardServiceWorker"
+	loggerName = "LeaderboardServiceWorker"
 
-	defaultWatchInterval = time.Second * 10
+	defaultPositionRefreshTime = 10 * time.Second
+	defaultTradersRefreshTime  = 24 * time.Hour
 )

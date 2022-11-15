@@ -14,7 +14,7 @@ services:
       - ./data/mysql/conf.d:/etc/mysql/conf.d
       - ./data/mysql/data:/var/lib/mysql
     ports:
-      - 3306:3306
+      - "3306:3306"
     networks:
       - signaller
     restart: unless-stopped

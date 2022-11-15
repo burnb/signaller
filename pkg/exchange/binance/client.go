@@ -17,8 +17,7 @@ import (
 )
 
 type Client struct {
-	name               string
-	log                *zap.Logger
+	logger             *zap.Logger
 	workersCnt         uint8
 	proxySrv           *proxy.Service
 	client             *futures.Client
@@ -27,11 +26,11 @@ type Client struct {
 }
 
 func NewClient(log *zap.Logger, proxySrv *proxy.Service) *Client {
-	return &Client{log: log.Named(Name), name: Name, workersCnt: DefaultWorkersCnt, proxySrv: proxySrv}
+	return &Client{logger: log.Named(name), workersCnt: DefaultWorkersCnt, proxySrv: proxySrv}
 }
 
 func (c *Client) Name() string {
-	return c.name
+	return name
 }
 
 func (c *Client) TopTraders() (traders []*entities.Trader, err error) {
@@ -45,7 +44,7 @@ func (c *Client) TopTraders() (traders []*entities.Trader, err error) {
 				`{"limit":150,"sortType":"ROI","isShared":true,"periodType":"EXACT_WEEKLY","pnlGainType":null,"roiGainType":null,"symbol":"","tradeType":"PERPETUAL"}`,
 			)
 		if err != nil {
-			c.log.Error("unable to do top traders request", zap.Error(err))
+			c.logger.Error("unable to do top traders request", zap.Error(err))
 			continue
 		}
 
@@ -122,11 +121,11 @@ func (c *Client) RefreshTraders(traders []*entities.Trader) {
 		go func() {
 			for trader := range tradersCh {
 				if err := c.refreshTraderBaseInfo(trader); err != nil {
-					c.log.Error("unable to get trader base info", zap.String("uid", trader.Uid), zap.Error(err))
+					c.logger.Error("unable to get trader base info", zap.String("uid", trader.Uid), zap.Error(err))
 					continue
 				}
 				if err := c.refreshTraderStats(trader); err != nil {
-					c.log.Error("unable to get trader stats", zap.String("uid", trader.Uid), zap.Error(err))
+					c.logger.Error("unable to get trader stats", zap.String("uid", trader.Uid), zap.Error(err))
 					continue
 				}
 			}

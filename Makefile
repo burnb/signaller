@@ -6,6 +6,10 @@
 # go get -d github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2
 # go get -d github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 
+DB ?= $(shell bash -c 'read -p "DB Address [127.0.0.1:3306]: " db; echo $${db:-127.0.0.1:3306}')
+DB_USERNAME ?= $(shell bash -c 'read -p "DB Username: " username; echo $$username')
+DB_PASSWORD ?= $(shell bash -c 'read -p "DB Password: " pwd; echo $$pwd')
+
 protoc:
 	protoc -I ./pkg/grpc/schema/ \
     		--go_out=./pkg/grpc/api/proto/ \
@@ -16,7 +20,7 @@ protoc:
 
 migrate:
 	cd ./migrations
-	goose mysql 'username:password@tcp(127.0.0.1:3306)/signaller' up
+	@goose mysql '${DB_USERNAME}:${DB_PASSWORD}@tcp(${DB})/signaller' up
 
 build:
 	env GOOS=linux GOARCH=amd64	go build -o ./build/signaller ./cmd/signaller

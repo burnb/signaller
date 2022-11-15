@@ -5,10 +5,7 @@ import (
 	"os"
 	osSignal "os/signal"
 	"syscall"
-	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 
@@ -19,12 +16,14 @@ import (
 	"github.com/burnb/signaller/internal/provider"
 	"github.com/burnb/signaller/internal/proxy"
 	"github.com/burnb/signaller/internal/repository"
-	"github.com/burnb/signaller/pkg/exchange/clients/binance"
+	"github.com/burnb/signaller/pkg/exchange/binance"
 )
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		logBasic.Fatal(err)
+		if _, ok := err.(*os.PathError); !ok {
+			logBasic.Fatal(err)
+		}
 	}
 
 	cfg := &configs.App{}
@@ -32,47 +31,37 @@ func main() {
 		logBasic.Fatal(err)
 	}
 
-	logCreator, err := logger.NewCreator(cfg)
+	logCreator, err := logger.NewCreator(cfg.Logger, cfg.Telegram)
 	if err != nil {
 		logBasic.Fatal(err)
 	}
+	defer logCreator.Shutdown()
+
 	log := logCreator.Create("app")
-	defer func() {
-		if logErr := log.Sync(); logErr != nil {
-			logBasic.Printf("unable to sync logger %v", logErr)
-		}
-	}()
 
-	db, dbErr := sqlx.Open("mysql", cfg.Db.GetDatabaseDSN())
-	if dbErr != nil {
-		log.Fatal("unable to open db", zap.Error(dbErr))
+	repo := repository.NewMysql(cfg.Db, log)
+	if err = repo.Init(); err != nil {
+		log.Fatal("unable to init repository", zap.Error(err))
 	}
-	db.SetConnMaxLifetime(time.Minute * 5)
-	db.SetMaxIdleConns(5)
-	db.SetMaxOpenConns(5)
-	dbClient := db
-	defer func() { _ = dbClient.Close() }()
+	defer repo.Shutdown()
 
-	repo := repository.NewMysql(dbClient)
-
-	grpcSrv := grpc.NewServer(cfg.GRPCAddress(), log)
+	grpcSrv := grpc.NewServer(cfg.GRPC, log)
 	if err = grpcSrv.Init(); err != nil {
 		log.Fatal("unable to init grpc server", zap.Error(err))
 	}
 
-	proxySrv := proxy.New(&cfg.Proxy, log)
+	proxySrv := proxy.New(cfg.Proxy, log)
 	if err = proxySrv.Init(); err != nil {
 		log.Fatal("unable to init proxy service", zap.Error(err))
 	}
 
 	exClient := binance.NewClient(log, proxySrv)
-
 	providerSrv := provider.NewService(log, exClient, repo, grpcSrv)
-	if err = providerSrv.InitAndServe(); err != nil {
+	if err = providerSrv.Init(); err != nil {
 		log.Fatal("unable to init provider", zap.Error(err))
 	}
 
-	metricSrv := metric.New(&cfg.Metric, log)
+	metricSrv := metric.New(cfg.Metric, log)
 	metricSrv.Init()
 
 	log.Info(logger.ColorGreen.Fill("started"))

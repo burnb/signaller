@@ -17,28 +17,30 @@ import (
 	"github.com/burnb/signaller/internal/configs"
 )
 
-const ServiceName = "ProxyService"
-
 type Service struct {
 	mu      sync.RWMutex
-	cfg     *configs.Proxy
-	log     *zap.Logger
+	cfg     configs.Proxy
+	logger  *zap.Logger
 	current uint16
 	proxies []string
 }
 
-func New(cfg *configs.Proxy, log *zap.Logger) *Service {
-	return &Service{cfg: cfg, log: log.Named(ServiceName)}
+func New(cfg configs.Proxy, log *zap.Logger) *Service {
+	return &Service{cfg: cfg, logger: log.Named(loggerName)}
 }
 
 func (s *Service) Init() error {
 	inFile, err := os.Open(s.cfg.Path)
 	if err != nil {
+		if _, ok := err.(*os.PathError); ok {
+			return nil
+		}
+
 		return err
 	}
 	defer func() {
 		if err := inFile.Close(); err != nil {
-			s.log.Error("unable to close proxy list file", zap.Error(err))
+			s.logger.Error("unable to close proxy list file", zap.Error(err))
 		}
 	}()
 
@@ -49,7 +51,7 @@ func (s *Service) Init() error {
 		s.proxies = append(s.proxies, strings.TrimSpace(strings.ReplaceAll(scanner.Text(), "socks5://", "")))
 	}
 
-	s.log.Info("loaded proxies", zap.Int("cnt", len(s.proxies)))
+	s.logger.Info("loaded proxies", zap.Int("cnt", len(s.proxies)))
 
 	return nil
 }
@@ -100,10 +102,6 @@ func (s *Service) Dialer(rnd bool) (netProxy.Dialer, error) {
 			return nil, err
 		}
 		forwardDialer = dialerGate
-	}
-
-	if !s.IsEnabled() {
-		return forwardDialer, nil
 	}
 
 	return netProxy.SOCKS5("tcp", s.Address(rnd), nil, forwardDialer)

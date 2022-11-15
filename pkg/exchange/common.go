@@ -1,4 +1,4 @@
-package clients
+package exchange
 
 import (
 	"github.com/burnb/signaller/internal/repository/entities"

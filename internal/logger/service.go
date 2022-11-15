@@ -2,12 +2,15 @@ package logger
 
 import (
 	"fmt"
+	logBasic "log"
 	"strings"
 
-	"github.com/alfonmga/zap2telegram"
+	zap2tg "github.com/alfonmga/zap2telegram"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/burnb/signaller/internal/configs"
 )
 
 type Creator struct {
@@ -16,9 +19,9 @@ type Creator struct {
 	entries       map[string]*zap.Logger
 }
 
-func NewCreator(cfg Config) (*Creator, error) {
+func NewCreator(cfg configs.Logger, tgCfg configs.Telegram) (*Creator, error) {
 	logsLevel := new(zapcore.Level)
-	err := logsLevel.Set(cfg.GetMinimalLogLevel())
+	err := logsLevel.Set(cfg.MinimalLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -27,9 +30,6 @@ func NewCreator(cfg Config) (*Creator, error) {
 	lCfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	lCfg.Level = zap.NewAtomicLevelAt(*logsLevel)
 	lCfg.OutputPaths = []string{"stdout"}
-	if cfg.IsDebug() {
-		lCfg.Level.SetLevel(zap.DebugLevel)
-	}
 
 	defaultLogger, err := lCfg.Build()
 	if err != nil {
@@ -37,46 +37,33 @@ func NewCreator(cfg Config) (*Creator, error) {
 	}
 	cores := []zapcore.Core{defaultLogger.Core()}
 
-	if cfg.TelegramCfg().Token != "" && cfg.TelegramCfg().ChatId != 0 {
+	if tgCfg.IsEnabled() {
 		telegramCore, err :=
-			zap2telegram.NewTelegramCore(
-				cfg.TelegramCfg().Token,
-				[]int64{cfg.TelegramCfg().ChatId},
-				zap2telegram.WithLevel(zapcore.WarnLevel), // send only Info and above logs to Telegram
-				zap2telegram.WithNotificationOn(
-					[]zapcore.Level{zapcore.WarnLevel, zap.ErrorLevel, zap.PanicLevel, zap.FatalLevel}, // enable message notification only this levels
+			zap2tg.NewTelegramCore(
+				*tgCfg.Token,
+				[]int64{*tgCfg.ChatId},
+				zap2tg.WithLevel(zapcore.WarnLevel),
+				zap2tg.WithNotificationOn(
+					[]zapcore.Level{zapcore.WarnLevel, zap.ErrorLevel, zap.PanicLevel, zap.FatalLevel},
 				),
-				zap2telegram.WithFormatter(func(e zapcore.Entry, fields []zapcore.Field) string {
-					escapedLoggerName := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, e.LoggerName)
-					escapedCaller := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, e.Caller.TrimmedPath())
-					escapedMessage := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, e.Message)
-					msg := fmt.Sprintf(
-						"[%s] Logger: %s\nCaller: %s\nMessage: *%s*",
-						strings.ToUpper(e.Level.String()),
-						escapedLoggerName,
-						escapedCaller,
-						escapedMessage,
-					)
-					// add fields to the message
-					msgFields := ""
+				zap2tg.WithParseMode(tgbotapi.ModeMarkdownV2),
+				zap2tg.WithFormatter(func(e zapcore.Entry, fields []zapcore.Field) string {
+					msg := fmt.Sprintf("*%s*\n%s\n", strings.ToUpper(e.Message), e.LoggerName)
+
+					var msgFields string
 					for _, field := range fields {
 						enc := zapcore.NewMapObjectEncoder()
 						field.AddTo(enc)
 						for k, v := range enc.Fields {
-							escapedK := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, k)
-							escapedV := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, fmt.Sprintf("%+v", v))
-							msgField := fmt.Sprintf("%s\\=`%s`", escapedK, escapedV)
-							if msgFields != "" {
-								msgFields += " " // add leading space if there are already fields
-							}
-							msgFields += msgField
+							msgFields += fmt.Sprintf(
+								"%s: %s\n",
+								strings.ToUpper(k),
+								tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, fmt.Sprintf("%+v", v)),
+							)
 						}
 					}
 					if msgFields != "" {
 						msg += fmt.Sprintf("\n%s", msgFields)
-					}
-					if e.Stack != "" {
-						msg += fmt.Sprintf("\nLogger stacktrace: `%s`", tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, e.Stack))
 					}
 
 					return msg
@@ -107,4 +94,12 @@ func (s *Creator) Create(named string) *zap.Logger {
 	zap.ReplaceGlobals(log)
 
 	return log
+}
+
+func (s *Creator) Shutdown() {
+	for _, log := range s.entries {
+		if logErr := log.Sync(); logErr != nil {
+			logBasic.Printf("unable to sync logger %v", logErr)
+		}
+	}
 }

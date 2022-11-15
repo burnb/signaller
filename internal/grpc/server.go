@@ -14,19 +14,13 @@ import (
 	grpcKeepalive "google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
+	"github.com/burnb/signaller/internal/configs"
 	"github.com/burnb/signaller/pkg/grpc/api/proto"
 )
 
-const (
-	serverName = "ServerGRPC"
-
-	defaultServerMaxReceiveMessageSize = 1024 * 1024
-	defaultServerMaxSendMessageSize    = 1024 * 1024
-)
-
 type Server struct {
-	address       string
-	log           *zap.Logger
+	cfg           configs.GRPC
+	logger        *zap.Logger
 	grpcServer    *grpc.Server
 	listener      net.Listener
 	subscriptions sync.Map
@@ -36,10 +30,10 @@ type Server struct {
 	proto.UnimplementedSignallerApiServer
 }
 
-func NewServer(address string, log *zap.Logger) *Server {
+func NewServer(cfg configs.GRPC, log *zap.Logger) *Server {
 	return &Server{
-		address: address,
-		log:     log.Named(serverName),
+		cfg:    cfg,
+		logger: log.Named(loggerName),
 		grpcServer: grpc.NewServer(
 			grpc.MaxRecvMsgSize(defaultServerMaxReceiveMessageSize),
 			grpc.MaxSendMsgSize(defaultServerMaxSendMessageSize),
@@ -59,7 +53,7 @@ func NewServer(address string, log *zap.Logger) *Server {
 }
 
 func (s *Server) Init() error {
-	listener, err := net.Listen("tcp", s.address)
+	listener, err := net.Listen("tcp", s.cfg.Address())
 	if err != nil {
 		return fmt.Errorf("unable to listen port %w", err)
 	}
@@ -74,10 +68,10 @@ func (s *Server) Init() error {
 }
 
 func (s *Server) serve() {
-	s.log.Info("grpc serve success")
+	s.logger.Info("grpc serve success")
 
 	if err := s.grpcServer.Serve(s.listener); err != nil {
-		s.log.Fatal("unable to serve", zap.Error(err))
+		s.logger.Fatal("unable to serve", zap.Error(err))
 	}
 }
 
@@ -88,13 +82,13 @@ func (s *Server) Stream(stream proto.SignallerApi_StreamServer) error {
 
 	go s.runStreamWorker(subscription)
 
-	s.log.Info("client connected", zap.String("sub", cUid))
+	s.logger.Info("client connected", zap.String("sub", cUid))
 
 	<-stream.Context().Done()
 
 	s.subscriptions.Delete(cUid)
 
-	s.log.Info("client disconnected", zap.String("sub", cUid))
+	s.logger.Info("client disconnected", zap.String("sub", cUid))
 
 	return nil
 }
@@ -107,7 +101,7 @@ func (s *Server) runStreamWorker(subscription *Subscription) {
 			case <-subscription.stream.Context().Done():
 				return
 			default:
-				s.log.Error("unable to receive stream", zap.Error(err))
+				s.logger.Error("unable to receive stream", zap.Error(err))
 
 				return
 			}
@@ -154,21 +148,21 @@ func (s *Server) Publish(event *proto.PositionEvent) error {
 		func(k, v any) bool {
 			uid, ok := k.(string)
 			if !ok {
-				s.log.Error("unable to cast subscription uid type", zap.String("type", fmt.Sprintf("%T", k)))
+				s.logger.Error("unable to cast subscription uid type", zap.String("type", fmt.Sprintf("%T", k)))
 
 				return false
 			}
 
 			subscription, ok := v.(*Subscription)
 			if !ok {
-				s.log.Error("unable to cast subscription type", zap.String("type", fmt.Sprintf("%T", v)))
+				s.logger.Error("unable to cast subscription type", zap.String("type", fmt.Sprintf("%T", v)))
 
 				return false
 			}
 
 			if _, ok := subscription.uids[event.TraderUid]; ok {
 				if err := subscription.stream.Send(event); err != nil {
-					s.log.Error("unable to send data to client", zap.Error(err))
+					s.logger.Error("unable to send data to client", zap.Error(err))
 
 					unsubscribe = append(unsubscribe, uid)
 				}

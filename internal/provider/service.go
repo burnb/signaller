@@ -14,7 +14,7 @@ import (
 )
 
 type Service struct {
-	log            *zap.Logger
+	logger         *zap.Logger
 	exchangeClient ExchangeClient
 	repo           *repository.Mysql
 	publisher      publisher
@@ -23,14 +23,14 @@ type Service struct {
 
 func NewService(log *zap.Logger, exClient ExchangeClient, repo *repository.Mysql, pub publisher) *Service {
 	return &Service{
-		log:            log.Named(LoggerNameServiceWorker),
+		logger:         log.Named(loggerName),
 		exchangeClient: exClient,
 		repo:           repo,
 		publisher:      pub,
 	}
 }
 
-func (s *Service) InitAndServe() error {
+func (s *Service) Init() error {
 	if err := s.restore(); err != nil {
 		return err
 	}
@@ -48,6 +48,7 @@ func (s *Service) restore() error {
 	if err != nil {
 		return err
 	}
+
 	for _, trader := range traders {
 		if err := s.restoreTradersOpenedPositions(trader); err != nil {
 			return err
@@ -85,7 +86,7 @@ func (s *Service) runPublisherFollowWorker() {
 
 			trader, err := s.repo.Trader(traderUid)
 			if err != nil {
-				s.log.Error("unable to get trader", zap.Error(err))
+				s.logger.Error("unable to get trader", zap.Error(err))
 				continue
 			}
 			if trader == nil {
@@ -98,22 +99,22 @@ func (s *Service) runPublisherFollowWorker() {
 				s.exchangeClient.RefreshTraders([]*entities.Trader{trader})
 
 				if !trader.PositionShared {
-					s.log.Warn("trader doesn't show his positions", zap.String("uid", trader.Uid))
+					s.logger.Warn("trader doesn't show his positions", zap.String("uid", trader.Uid))
 					continue
 				}
 
 				if err := s.repo.CreateTrader(trader); err != nil {
-					s.log.Error("unable to create trader", zap.Error(err))
+					s.logger.Error("unable to create trader", zap.Error(err))
 					continue
 				}
 			} else {
 				trader.Publisher = true
 				if err := s.repo.UpdateTrader(trader); err != nil {
-					s.log.Error("unable to update trader", zap.Error(err))
+					s.logger.Error("unable to update trader", zap.Error(err))
 					continue
 				}
 				if err := s.restoreTradersOpenedPositions(trader); err != nil {
-					s.log.Error("unable to restore traders opened positions", zap.Error(err))
+					s.logger.Error("unable to restore traders opened positions", zap.Error(err))
 				}
 			}
 			s.traders.Store(traderUid, trader)
@@ -132,7 +133,7 @@ func (s *Service) runPublisherUnFollowWorker() {
 			trader, _ := v.(*entities.Trader)
 			trader.Publisher = false
 			if err := s.repo.UpdateTrader(trader); err != nil {
-				s.log.Error(
+				s.logger.Error(
 					"unable to update trader after unfollow",
 					zap.String("uid", traderUid),
 					zap.Error(err),
@@ -152,7 +153,7 @@ func (s *Service) runPositionRefreshWorker() {
 					trader, _ := v.(*entities.Trader)
 					positions, err := s.exchangeClient.TraderPositions(trader.Uid)
 					if err != nil {
-						s.log.Error("unable to get trader positions", zap.String("uid", trader.Uid), zap.Error(err))
+						s.logger.Error("unable to get trader positions", zap.String("uid", trader.Uid), zap.Error(err))
 
 						return true
 					}
@@ -163,7 +164,7 @@ func (s *Service) runPositionRefreshWorker() {
 				},
 			)
 
-			time.Sleep(10 * time.Second)
+			time.Sleep(defaultPositionRefreshTime)
 		}
 	}()
 }
@@ -184,18 +185,18 @@ func (s *Service) runTradersRefreshWorker() {
 			s.exchangeClient.RefreshTraders(traders)
 			for _, trader := range traders {
 				if err := s.repo.UpdateTrader(trader); err != nil {
-					s.log.Error(
+					s.logger.Error(
 						"unable to update trader after refresh",
 						zap.String("uid", trader.Uid),
 						zap.Error(err),
 					)
 				}
 				if !trader.PositionShared {
-					s.log.Warn("trader hide his positions", zap.String("uid", trader.Uid))
+					s.logger.Warn("trader hide his positions", zap.String("uid", trader.Uid))
 				}
 			}
 
-			time.Sleep(24 * time.Hour)
+			time.Sleep(defaultTradersRefreshTime)
 		}
 	}()
 }
@@ -219,10 +220,10 @@ func (s *Service) handleNewTraderPositions(trader *entities.Trader, newPositions
 			newPosition.Id = oldPosition.Id
 			amountChange = newPosition.Amount / oldPosition.Amount
 			if err := s.repo.UpdatePosition(newPosition); err != nil {
-				s.log.Fatal("unable to update position", zap.Int64("id", newPosition.Id), zap.Error(err))
+				s.logger.Fatal("unable to update position", zap.Int64("id", newPosition.Id), zap.Error(err))
 			}
 		} else if err := s.repo.CreatePosition(newPosition); err != nil {
-			s.log.Fatal("unable to create position", zap.Int64("id", newPosition.Id), zap.Error(err))
+			s.logger.Fatal("unable to create position", zap.Int64("id", newPosition.Id), zap.Error(err))
 		}
 
 		direction := proto.Direction_LONG
@@ -271,7 +272,7 @@ func (s *Service) handleNewTraderPositions(trader *entities.Trader, newPositions
 		if !exists {
 			oldPosition.ClosedAt = sql.NullTime{Time: time.Now(), Valid: true}
 			if err := s.repo.UpdatePosition(oldPosition); err != nil {
-				s.log.Fatal("unable to close position", zap.Int64("id", oldPosition.Id), zap.Error(err))
+				s.logger.Fatal("unable to close position", zap.Int64("id", oldPosition.Id), zap.Error(err))
 			}
 
 			delete(trader.Positions, key)
@@ -303,7 +304,7 @@ func (s *Service) handleNewTraderPositions(trader *entities.Trader, newPositions
 func (s *Service) push(events []*proto.PositionEvent) {
 	for _, event := range events {
 		if err := s.publisher.Publish(event); err != nil {
-			s.log.Error(
+			s.logger.Error(
 				"unable to push position event",
 				zap.Int64("id", event.PositionId),
 				zap.String("type", proto.Type_name[int32(event.Type)]),
@@ -311,7 +312,7 @@ func (s *Service) push(events []*proto.PositionEvent) {
 			)
 		}
 		if err := s.repo.RefreshPublishTime(event.TraderUid); err != nil {
-			s.log.Error(
+			s.logger.Error(
 				"unable to refresh trader publish time",
 				zap.String("trader_uid", event.TraderUid),
 				zap.Error(err),

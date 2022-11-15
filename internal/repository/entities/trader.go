@@ -5,9 +5,8 @@ import (
 	"time"
 )
 
-//go:generate easyjson trader.go
+//go:generate easyjson -all trader.go
 
-// easyjson:json
 type Trader struct {
 	Uid            string               `db:"uid" json:"encryptedUid"`
 	Pnl            float64              `db:"pnl" json:"pnlValue"`

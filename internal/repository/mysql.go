@@ -2,19 +2,45 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"go.uber.org/zap"
 
+	"github.com/burnb/signaller/internal/configs"
 	"github.com/burnb/signaller/internal/repository/entities"
 )
 
 type Mysql struct {
-	db *sqlx.DB
+	cfg    configs.Db
+	logger *zap.Logger
+	db     *sqlx.DB
 }
 
-func NewMysql(db *sqlx.DB) *Mysql {
-	return &Mysql{db: db}
+func NewMysql(cfg configs.Db, log *zap.Logger) *Mysql {
+	return &Mysql{cfg: cfg, logger: log.Named(loggerName)}
+}
+
+func (r *Mysql) Init() error {
+	db, dbErr := sqlx.Open("mysql", r.cfg.GetDatabaseDSN())
+	if dbErr != nil {
+		return fmt.Errorf("unable to open db: %w", dbErr)
+	}
+	db.SetConnMaxLifetime(defaultConnMaxLifetime)
+	db.SetMaxIdleConns(defaultMaxConn)
+	db.SetMaxOpenConns(defaultMaxConn)
+	r.db = db
+
+	return nil
+}
+
+func (r *Mysql) Shutdown() {
+	if err := r.db.Close(); err != nil {
+		r.logger.Error("unable to close db client", zap.Error(err))
+	}
+	r.logger.Info("db client stopped gracefully")
 }
 
 func (r *Mysql) Trader(uid string) (*entities.Trader, error) {

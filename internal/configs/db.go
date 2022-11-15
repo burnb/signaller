@@ -7,10 +7,10 @@ import (
 )
 
 type Db struct {
-	Host     string `envconfig:"DB_HOST"`
-	Port     uint16 `envconfig:"DB_PORT"`
-	Name     string `envconfig:"DB_DATABASE"`
-	Username string `envconfig:"DB_USERNAME"`
+	Host     string `envconfig:"DB_HOST" required:"true"`
+	Port     uint16 `envconfig:"DB_PORT" required:"true"`
+	Name     string `envconfig:"DB_DATABASE" required:"true"`
+	Username string `envconfig:"DB_USERNAME" required:"true"`
 	Password string `envconfig:"DB_PASSWORD"`
 }
 

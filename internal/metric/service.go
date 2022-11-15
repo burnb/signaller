@@ -13,19 +13,20 @@ import (
 )
 
 type Service struct {
-	cfg       *configs.Metric
+	cfg       configs.Metric
 	log       *zap.Logger
 	startedAt time.Time
 }
 
-func New(cfg *configs.Metric, log *zap.Logger) *Service {
-	return &Service{cfg: cfg, log: log.Named(ServiceName), startedAt: time.Now()}
+func New(cfg configs.Metric, log *zap.Logger) *Service {
+	return &Service{cfg: cfg, log: log.Named(loggerName), startedAt: time.Now()}
 }
 
 func (s *Service) Init() {
 	if !s.cfg.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
+
 	router := gin.New()
 	router.Use(
 		ginzap.Ginzap(s.log, time.RFC3339, false),
@@ -47,8 +48,8 @@ func (s *Service) Init() {
 	server := &http.Server{
 		Addr:         s.cfg.Address(),
 		Handler:      router,
-		ReadTimeout:  DefaultHttpReadTimeout,
-		WriteTimeout: DefaultHttpWriteTimeout,
+		ReadTimeout:  defaultHttpReadTimeout,
+		WriteTimeout: defaultHttpWriteTimeout,
 	}
 
 	go func() {

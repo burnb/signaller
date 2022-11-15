@@ -5,15 +5,12 @@ import (
 )
 
 type App struct {
-	Debug        bool `envconfig:"DEBUG" default:"true"`
-	DebugVerbose bool `envconfig:"DEBUG_VERBOSE"`
-	// MinimalLogLevel is a level for setup minimal logger event notification.
-	// Allowed: debug, info, warn, error, dpanic, panic, fatal
-	MinimalLogLevel string `envconfig:"MIN_LOG_LEVEL" default:"info"`
-	GrpcPort        string `envconfig:"GRPC_PORT" default:"8080"`
-	Telegram
+	Debug bool `envconfig:"DEBUG" default:"false"`
+	Logger
 	Db
+	GRPC
 	Proxy
+	Telegram
 	Metric
 }
 
@@ -23,7 +20,7 @@ func (c *App) Prepare() (err error) {
 		return err
 	}
 
-	if err = c.Telegram.Prepare(); err != nil {
+	if err = c.Logger.Prepare(c.Debug); err != nil {
 		return err
 	}
 
@@ -31,25 +28,17 @@ func (c *App) Prepare() (err error) {
 		return err
 	}
 
-	if err = c.Metric.Prepare(); err != nil {
+	if err = c.GRPC.Prepare(); err != nil {
 		return err
 	}
 
-	return c.Proxy.Prepare()
-}
+	if err = c.Proxy.Prepare(); err != nil {
+		return err
+	}
 
-func (c *App) IsDebug() bool {
-	return c.Debug
-}
+	if err = c.Telegram.Prepare(); err != nil {
+		return err
+	}
 
-func (c *App) GetMinimalLogLevel() string {
-	return c.MinimalLogLevel
-}
-
-func (c *App) TelegramCfg() Telegram {
-	return c.Telegram
-}
-
-func (c *App) GRPCAddress() string {
-	return ":" + c.GrpcPort
+	return c.Metric.Prepare()
 }

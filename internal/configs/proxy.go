@@ -5,7 +5,7 @@ import (
 )
 
 type Proxy struct {
-	Path    string  `envconfig:"PROXY_LIST_PATH" default:"./proxy.txt"`
+	Path    string  `envconfig:"PROXY_LIST_PATH" default:"./proxy_list"`
 	Gateway *string `envconfig:"PROXY_GATEWAY"`
 }
 
