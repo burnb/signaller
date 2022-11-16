@@ -218,7 +218,10 @@ func (s *Service) handleNewTraderPositions(trader *entities.Trader, newPositions
 			}
 			eventType = proto.Type_UPDATE
 			newPosition.Id = oldPosition.Id
-			amountChange = newPosition.Amount/oldPosition.Amount - 1
+
+			amountChange =
+				float64(newPosition.Leverage)/float64(oldPosition.Leverage)*(newPosition.Amount/oldPosition.Amount) - 1
+
 			if err := s.repo.UpdatePosition(newPosition); err != nil {
 				s.logger.Fatal("unable to update position", zap.Int64("id", newPosition.Id), zap.Error(err))
 			}
