@@ -3,6 +3,7 @@ module github.com/burnb/signaller
 go 1.19
 
 require (
+	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/adshao/go-binance/v2 v2.3.10
 	github.com/alfonmga/zap2telegram v1.0.1
 	github.com/gin-contrib/zap v0.1.0

@@ -26,11 +26,11 @@ type Client struct {
 }
 
 func NewClient(log *zap.Logger, proxySrv *proxy.Service) *Client {
-	return &Client{logger: log.Named(name), workersCnt: DefaultWorkersCnt, proxySrv: proxySrv}
+	return &Client{logger: log.Named(loggerNameClient), workersCnt: DefaultWorkersCnt, proxySrv: proxySrv}
 }
 
 func (c *Client) Name() string {
-	return name
+	return loggerNameClient
 }
 
 func (c *Client) TopTraders() (traders []*entities.Trader, err error) {

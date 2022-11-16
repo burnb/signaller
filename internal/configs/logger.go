@@ -5,9 +5,13 @@ import (
 )
 
 type Logger struct {
-	// MinimalLevel is a level for setup minimal logger event notification.
+	// LogLevel is a level for setup minimal logger event notification.
 	// Allowed: debug, info, warn, error, dpanic, panic, fatal
-	MinimalLevel string `envconfig:"LOG_LEVEL" default:"info"`
+	LogLevel string `envconfig:"LOG_LEVEL" default:"info"`
+}
+
+func (c *Logger) MinimalLevel() string {
+	return c.LogLevel
 }
 
 func (c *Logger) Prepare(debug bool) error {
@@ -16,7 +20,7 @@ func (c *Logger) Prepare(debug bool) error {
 	}
 
 	if debug {
-		c.MinimalLevel = "debug"
+		c.LogLevel = "debug"
 	}
 
 	return nil

@@ -11,13 +11,15 @@ import (
 
 	"github.com/burnb/signaller/internal/configs"
 	"github.com/burnb/signaller/internal/grpc"
-	"github.com/burnb/signaller/internal/logger"
 	"github.com/burnb/signaller/internal/metric"
 	"github.com/burnb/signaller/internal/provider"
 	"github.com/burnb/signaller/internal/proxy"
 	"github.com/burnb/signaller/internal/repository"
 	"github.com/burnb/signaller/pkg/exchange/binance"
+	"github.com/burnb/signaller/pkg/logger"
 )
+
+const loggerName = "Signaller"
 
 func main() {
 	if err := godotenv.Load(); err != nil {
@@ -31,13 +33,13 @@ func main() {
 		logBasic.Fatal(err)
 	}
 
-	logCreator, err := logger.NewCreator(cfg.Logger, cfg.Telegram)
+	logCreator, err := logger.NewCreator(&cfg.Logger, &cfg.Telegram)
 	if err != nil {
 		logBasic.Fatal(err)
 	}
 	defer logCreator.Shutdown()
 
-	log := logCreator.Create("app")
+	log := logCreator.Create(loggerName)
 
 	repo := repository.NewMysql(cfg.Db, log)
 	if err = repo.Init(); err != nil {
@@ -64,7 +66,7 @@ func main() {
 	metricSrv := metric.New(cfg.Metric, log)
 	metricSrv.Init()
 
-	log.Info(logger.ColorGreen.Fill("started"))
+	log.Warn(logger.ColorGreen.Fill("started"))
 
 	c := make(chan os.Signal)
 	osSignal.Notify(c, syscall.SIGINT, syscall.SIGTERM)

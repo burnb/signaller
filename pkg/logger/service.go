@@ -5,12 +5,11 @@ import (
 	logBasic "log"
 	"strings"
 
+	"github.com/acarl005/stripansi"
 	zap2tg "github.com/alfonmga/zap2telegram"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-
-	"github.com/burnb/signaller/internal/configs"
 )
 
 type Creator struct {
@@ -19,9 +18,9 @@ type Creator struct {
 	entries       map[string]*zap.Logger
 }
 
-func NewCreator(cfg configs.Logger, tgCfg configs.Telegram) (*Creator, error) {
+func NewCreator(cfg Config, tgCfg ConfigTelegram) (*Creator, error) {
 	logsLevel := new(zapcore.Level)
-	err := logsLevel.Set(cfg.MinimalLevel)
+	err := logsLevel.Set(cfg.MinimalLevel())
 	if err != nil {
 		return nil, err
 	}
@@ -40,15 +39,19 @@ func NewCreator(cfg configs.Logger, tgCfg configs.Telegram) (*Creator, error) {
 	if tgCfg.IsEnabled() {
 		telegramCore, err :=
 			zap2tg.NewTelegramCore(
-				*tgCfg.Token,
-				[]int64{*tgCfg.ChatId},
+				tgCfg.Token(),
+				[]int64{tgCfg.ChatId()},
 				zap2tg.WithLevel(zapcore.WarnLevel),
 				zap2tg.WithNotificationOn(
 					[]zapcore.Level{zapcore.WarnLevel, zap.ErrorLevel, zap.PanicLevel, zap.FatalLevel},
 				),
 				zap2tg.WithParseMode(tgbotapi.ModeMarkdownV2),
 				zap2tg.WithFormatter(func(e zapcore.Entry, fields []zapcore.Field) string {
-					msg := fmt.Sprintf("*%s*\n%s\n", strings.ToUpper(e.Message), e.LoggerName)
+					msg := fmt.Sprintf(
+						"*%s*\n%s\n",
+						strings.ToUpper(stripansi.Strip(e.Message)),
+						tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, e.LoggerName),
+					)
 
 					var msgFields string
 					for _, field := range fields {
@@ -86,8 +89,7 @@ func NewCreator(cfg configs.Logger, tgCfg configs.Telegram) (*Creator, error) {
 func (s *Creator) Create(named string) *zap.Logger {
 	log, ok := s.entries[named]
 	if !ok {
-		log = zap.New(zapcore.NewTee(s.cores...))
-		log.Named(named)
+		log = zap.New(zapcore.NewTee(s.cores...)).Named(named)
 		s.entries[named] = log
 	}
 

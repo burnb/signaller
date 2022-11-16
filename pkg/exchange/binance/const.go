@@ -1,7 +1,7 @@
 package binance
 
 const (
-	name = "binance"
+	loggerNameClient = "BinanceClient"
 
 	DefaultWorkersCnt = 100
 	DefaultRetry      = 10

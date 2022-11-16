@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	loggerName = "repository"
+	loggerName = "Repository"
 
 	defaultMaxConn         = 5
 	defaultConnMaxLifetime = time.Minute * 5
