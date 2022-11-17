@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/adshao/go-binance/v2/futures"
 	"go.uber.org/zap"
@@ -101,7 +100,6 @@ func (c *Client) TraderPositions(uid string) ([]*entities.Position, error) {
 		pos.Long = pos.Amount > 0
 		pos.Exchange = entities.ExchangeBinance
 		pos.MarginMode = entities.MarginModeCross
-		pos.UpdatedAt = time.UnixMilli(pos.UpdateTimestamp)
 		for _, pos2 := range data.Data.OtherPositionRetList {
 			if pos.Symbol == pos2.Symbol && pos.Amount == -pos2.Amount {
 				pos.MarginMode = entities.MarginModeHedge

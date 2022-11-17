@@ -251,7 +251,7 @@ func (s *Service) handleNewTraderPositions(trader *entities.Trader, newPositions
 			Leverage:     uint32(newPosition.Leverage),
 			AmountChange: amountChange,
 			EntryPrice:   newPosition.EntryPrice,
-			CreatedAt:    timestamppb.New(newPosition.UpdatedAt),
+			CreatedAt:    timestamppb.New(time.UnixMilli(newPosition.UpdatedAt)),
 			Hedged:       hedged,
 		}
 		if eventType == proto.Type_CREATE {

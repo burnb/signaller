@@ -19,8 +19,7 @@ protoc:
     		./pkg/grpc/schema/*.proto
 
 migrate:
-	cd ./migrations
-	@goose mysql '${DB_USERNAME}:${DB_PASSWORD}@tcp(${DB})/signaller' up
+	@cd ./migrations && goose mysql '${DB_USERNAME}:${DB_PASSWORD}@tcp(${DB})/signaller' up
 
 build:
 	env GOOS=linux GOARCH=amd64	go build -o ./build/signaller ./cmd/signaller

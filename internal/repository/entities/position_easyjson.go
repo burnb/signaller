@@ -49,9 +49,9 @@ func easyjsonE0c3566dDecodeGithubComBurnbSignallerInternalRepositoryEntities(in 
 		case "leverage":
 			out.Leverage = uint8(in.Uint8())
 		case "createTimeStamp":
-			out.CreateTimestamp = int64(in.Int64())
+			out.CreatedAt = int64(in.Int64())
 		case "updateTimeStamp":
-			out.UpdateTimestamp = int64(in.Int64())
+			out.UpdatedAt = int64(in.Int64())
 		default:
 			in.SkipRecursive()
 		}
@@ -104,12 +104,12 @@ func easyjsonE0c3566dEncodeGithubComBurnbSignallerInternalRepositoryEntities(out
 	{
 		const prefix string = ",\"createTimeStamp\":"
 		out.RawString(prefix)
-		out.Int64(int64(in.CreateTimestamp))
+		out.Int64(int64(in.CreatedAt))
 	}
 	{
 		const prefix string = ",\"updateTimeStamp\":"
 		out.RawString(prefix)
-		out.Int64(int64(in.UpdateTimestamp))
+		out.Int64(int64(in.UpdatedAt))
 	}
 	out.RawByte('}')
 }

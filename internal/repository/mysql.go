@@ -125,8 +125,8 @@ func (r *Mysql) OpenedPositions(trader *entities.Trader) ([]*entities.Position, 
 }
 
 func (r *Mysql) CreatePosition(position *entities.Position) error {
-	if position.CreateTimestamp == 0 {
-		position.CreatedAt = time.Now()
+	if position.CreatedAt == 0 {
+		position.CreatedAt = time.Now().UnixMilli()
 	}
 	res, err :=
 		r.db.NamedExec(

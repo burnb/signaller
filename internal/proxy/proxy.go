@@ -108,6 +108,10 @@ func (s *Service) Dialer(rnd bool) (netProxy.Dialer, error) {
 }
 
 func (s *Service) HttpClient(rndProxy bool) (*http.Client, error) {
+	if !s.IsEnabled() {
+		return http.DefaultClient, nil
+	}
+
 	dialer, err := s.Dialer(rndProxy)
 	if err != nil {
 		return nil, err
