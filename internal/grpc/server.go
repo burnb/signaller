@@ -109,6 +109,9 @@ func (s *Server) runStreamWorker(subscription *Subscription) {
 
 		if req.GetType() == proto.SubscriptionRequestType_ADD {
 			for _, uid := range req.Uids {
+				if uid == "" {
+					continue
+				}
 				subscription.uids[uid] = struct{}{}
 				s.followCh <- uid
 			}
