@@ -43,34 +43,33 @@ func main() {
 
 	repo := repository.NewMysql(cfg.Db, log)
 	if err = repo.Init(); err != nil {
-		log.Fatal("unable to init repository", zap.Error(err))
+		log.Panic("unable to init repository", zap.Error(err))
 	}
 	defer repo.Shutdown()
 
 	grpcSrv := grpc.NewServer(cfg.GRPC, log)
 	if err = grpcSrv.Init(); err != nil {
-		log.Fatal("unable to init grpc server", zap.Error(err))
+		log.Panic("unable to init grpc server", zap.Error(err))
 	}
 
 	proxySrv := proxy.New(cfg.Proxy, log)
 	if err = proxySrv.Init(); err != nil {
-		log.Fatal("unable to init proxy service", zap.Error(err))
+		log.Panic("unable to init proxy service", zap.Error(err))
 	}
 
 	exClient := binance.NewClient(log, proxySrv)
 	providerSrv := provider.NewService(log, exClient, repo, grpcSrv)
 	if err = providerSrv.Init(); err != nil {
-		log.Fatal("unable to init provider", zap.Error(err))
+		log.Panic("unable to init provider", zap.Error(err))
 	}
 
-	metricSrv := metric.New(cfg.Metric, log)
+	metricSrv := metric.New(cfg.Metric, providerSrv, log)
 	metricSrv.Init()
 
 	log.Warn(logger.ColorGreen.Fill("started"))
+	defer func() { log.Warn(logger.ColorRed.Fill("shutdown")) }()
 
 	c := make(chan os.Signal)
 	osSignal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	<-c
-
-	log.Warn(logger.ColorRed.Fill("shutdown"))
 }

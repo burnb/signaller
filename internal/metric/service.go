@@ -10,16 +10,18 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/burnb/signaller/internal/configs"
+	"github.com/burnb/signaller/internal/provider"
 )
 
 type Service struct {
-	cfg       configs.Metric
-	log       *zap.Logger
-	startedAt time.Time
+	cfg         configs.Metric
+	log         *zap.Logger
+	startedAt   time.Time
+	providerSrv *provider.Service
 }
 
-func New(cfg configs.Metric, log *zap.Logger) *Service {
-	return &Service{cfg: cfg, log: log.Named(loggerName), startedAt: time.Now()}
+func New(cfg configs.Metric, providerSrv *provider.Service, log *zap.Logger) *Service {
+	return &Service{cfg: cfg, providerSrv: providerSrv, log: log.Named(loggerName), startedAt: time.Now()}
 }
 
 func (s *Service) Init() {
@@ -66,7 +68,10 @@ func (s *Service) httpHandlerMain(ctx *gin.Context) {
 	ctx.JSON(
 		http.StatusOK,
 		Main{
-			Uptime: time.Since(s.startedAt).String(),
+			Uptime:      time.Since(s.startedAt).String(),
+			Following:   s.providerSrv.TradersCount(),
+			LastSyncAt:  s.providerSrv.LastSyncAt().Format(time.RFC3339),
+			LastEventAt: s.providerSrv.LastEventAt().Format(time.RFC3339),
 		},
 	)
 }

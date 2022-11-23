@@ -4,5 +4,7 @@ package metric
 
 type Main struct {
 	Uptime      string
+	LastSyncAt  string
 	LastEventAt string
+	Following   uint
 }

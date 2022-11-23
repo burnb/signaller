@@ -19,6 +19,8 @@ type Service struct {
 	repo           *repository.Mysql
 	publisher      publisher
 	traders        sync.Map
+	lastEventAt    time.Time
+	lastSyncAt     time.Time
 }
 
 func NewService(log *zap.Logger, exClient ExchangeClient, repo *repository.Mysql, pub publisher) *Service {
@@ -41,6 +43,25 @@ func (s *Service) Init() error {
 	s.runTradersRefreshWorker()
 
 	return nil
+}
+
+func (s *Service) TradersCount() uint {
+	var length uint
+	s.traders.Range(func(_, _ interface{}) bool {
+		length++
+
+		return true
+	})
+
+	return length
+}
+
+func (s *Service) LastEventAt() time.Time {
+	return s.lastEventAt
+}
+
+func (s *Service) LastSyncAt() time.Time {
+	return s.lastSyncAt
 }
 
 func (s *Service) restore() error {
@@ -164,6 +185,10 @@ func (s *Service) runPositionRefreshWorker() {
 				},
 			)
 
+			if s.TradersCount() > 0 {
+				s.lastSyncAt = time.Now()
+			}
+
 			time.Sleep(defaultPositionRefreshTime)
 		}
 	}()
@@ -223,10 +248,10 @@ func (s *Service) handleNewTraderPositions(trader *entities.Trader, newPositions
 				float64(newPosition.Leverage)/float64(oldPosition.Leverage)*(newPosition.Amount/oldPosition.Amount) - 1
 
 			if err := s.repo.UpdatePosition(newPosition); err != nil {
-				s.logger.Fatal("unable to update position", zap.Int64("id", newPosition.Id), zap.Error(err))
+				s.logger.Panic("unable to update position", zap.Int64("id", newPosition.Id), zap.Error(err))
 			}
 		} else if err := s.repo.CreatePosition(newPosition); err != nil {
-			s.logger.Fatal("unable to create position", zap.Int64("id", newPosition.Id), zap.Error(err))
+			s.logger.Panic("unable to create position", zap.Int64("id", newPosition.Id), zap.Error(err))
 		}
 
 		direction := proto.Direction_LONG
@@ -275,7 +300,7 @@ func (s *Service) handleNewTraderPositions(trader *entities.Trader, newPositions
 		if !exists {
 			oldPosition.ClosedAt = sql.NullTime{Time: time.Now(), Valid: true}
 			if err := s.repo.UpdatePosition(oldPosition); err != nil {
-				s.logger.Fatal("unable to close position", zap.Int64("id", oldPosition.Id), zap.Error(err))
+				s.logger.Panic("unable to close position", zap.Int64("id", oldPosition.Id), zap.Error(err))
 			}
 
 			delete(trader.Positions, key)
@@ -321,5 +346,7 @@ func (s *Service) push(events []*proto.PositionEvent) {
 				zap.Error(err),
 			)
 		}
+
+		s.lastEventAt = time.Now()
 	}
 }

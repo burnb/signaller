@@ -38,8 +38,12 @@ func easyjson6a975c40DecodeGithubComBurnbSignallerInternalMetric(in *jlexer.Lexe
 		switch key {
 		case "Uptime":
 			out.Uptime = string(in.String())
+		case "LastSyncAt":
+			out.LastSyncAt = string(in.String())
 		case "LastEventAt":
 			out.LastEventAt = string(in.String())
+		case "Following":
+			out.Following = uint(in.Uint())
 		default:
 			in.SkipRecursive()
 		}
@@ -60,9 +64,19 @@ func easyjson6a975c40EncodeGithubComBurnbSignallerInternalMetric(out *jwriter.Wr
 		out.String(string(in.Uptime))
 	}
 	{
+		const prefix string = ",\"LastSyncAt\":"
+		out.RawString(prefix)
+		out.String(string(in.LastSyncAt))
+	}
+	{
 		const prefix string = ",\"LastEventAt\":"
 		out.RawString(prefix)
 		out.String(string(in.LastEventAt))
+	}
+	{
+		const prefix string = ",\"Following\":"
+		out.RawString(prefix)
+		out.Uint(uint(in.Following))
 	}
 	out.RawByte('}')
 }

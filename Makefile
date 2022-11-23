@@ -24,8 +24,8 @@ migrate:
 build:
 	env GOOS=linux GOARCH=amd64	go build -o ./build/signaller ./cmd
 
-deploy: build
-	frsync ./build/signaller dev1:/home/ubuntu/signaller/app/app
+deploy:	build
+	rsync -aHAXxv --numeric-ids --delete --progress -e "ssh -T -c aes256-gcm@openssh.com -o Compression=no -x" ./build/signaller dev1:/home/ubuntu/signaller/app/app
 	ssh ubuntu@dev1 "cd ~/signaller/ && docker compose build && docker compose down && docker compose up -d"
 
 default: protoc
