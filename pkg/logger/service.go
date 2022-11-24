@@ -53,6 +53,12 @@ func NewCreator(cfg Config, tgCfg ConfigTelegram) (*Creator, error) {
 						tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, e.LoggerName),
 					)
 
+					if e.Level == zapcore.ErrorLevel {
+						msg = "❗ " + msg
+					} else if e.Level > zapcore.ErrorLevel {
+						msg = "🆘 " + msg
+					}
+
 					var msgFields string
 					for _, field := range fields {
 						enc := zapcore.NewMapObjectEncoder()
