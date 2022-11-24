@@ -10,6 +10,7 @@ type App struct {
 	Db
 	GRPC
 	Proxy
+	Provider
 	Telegram
 	Metric
 }
@@ -33,6 +34,10 @@ func (c *App) Prepare() (err error) {
 	}
 
 	if err = c.Proxy.Prepare(); err != nil {
+		return err
+	}
+
+	if err = c.Provider.Prepare(); err != nil {
 		return err
 	}
 

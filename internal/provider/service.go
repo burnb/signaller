@@ -8,12 +8,14 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/burnb/signaller/internal/configs"
 	"github.com/burnb/signaller/internal/repository"
 	"github.com/burnb/signaller/internal/repository/entities"
 	"github.com/burnb/signaller/pkg/grpc/api/proto"
 )
 
 type Service struct {
+	cfg            configs.Provider
 	logger         *zap.Logger
 	exchangeClient ExchangeClient
 	repo           *repository.Mysql
@@ -23,8 +25,9 @@ type Service struct {
 	lastSyncAt     time.Time
 }
 
-func NewService(log *zap.Logger, exClient ExchangeClient, repo *repository.Mysql, pub publisher) *Service {
+func NewService(cfg configs.Provider, log *zap.Logger, exClient ExchangeClient, repo *repository.Mysql, pub publisher) *Service {
 	return &Service{
+		cfg:            cfg,
 		logger:         log.Named(loggerName),
 		exchangeClient: exClient,
 		repo:           repo,
@@ -168,6 +171,7 @@ func (s *Service) runPublisherUnFollowWorker() {
 
 func (s *Service) runPositionRefreshWorker() {
 	go func() {
+		refreshDuration := s.cfg.PositionRefreshTimeDuration()
 		for {
 			s.traders.Range(
 				func(k, v any) bool {
@@ -189,13 +193,14 @@ func (s *Service) runPositionRefreshWorker() {
 				s.lastSyncAt = time.Now()
 			}
 
-			time.Sleep(defaultPositionRefreshTime)
+			time.Sleep(refreshDuration)
 		}
 	}()
 }
 
 func (s *Service) runTradersRefreshWorker() {
 	go func() {
+		refreshDuration := s.cfg.TradersRefreshTimeDuration()
 		for {
 			var traders []*entities.Trader
 			s.traders.Range(
@@ -221,7 +226,7 @@ func (s *Service) runTradersRefreshWorker() {
 				}
 			}
 
-			time.Sleep(defaultTradersRefreshTime)
+			time.Sleep(refreshDuration)
 		}
 	}()
 }

@@ -58,7 +58,7 @@ func main() {
 	}
 
 	exClient := binance.NewClient(log, proxySrv)
-	providerSrv := provider.NewService(log, exClient, repo, grpcSrv)
+	providerSrv := provider.NewService(cfg.Provider, log, exClient, repo, grpcSrv)
 	if err = providerSrv.Init(); err != nil {
 		log.Panic("unable to init provider", zap.Error(err))
 	}
