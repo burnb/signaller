@@ -243,18 +243,18 @@ func (s *Service) handleNewTraderPositions(trader *entities.Trader, newPositions
 		eventType := proto.Type_CREATE
 		oldPosition, ok := trader.Positions[newPosition.Key()]
 		if ok {
-			if oldPosition.UpdatedAt == newPosition.UpdatedAt {
-				continue
-			}
-			eventType = proto.Type_UPDATE
 			newPosition.Id = oldPosition.Id
-
-			amountChange =
-				float64(newPosition.Leverage)/float64(oldPosition.Leverage)*(newPosition.Amount/oldPosition.Amount) - 1
-
 			if err := s.repo.UpdatePosition(newPosition); err != nil {
 				s.logger.Panic("unable to update position", zap.Int64("id", newPosition.Id), zap.Error(err))
 			}
+
+			if oldPosition.UpdatedAt == newPosition.UpdatedAt {
+				continue
+			}
+
+			eventType = proto.Type_UPDATE
+			amountChange =
+				float64(newPosition.Leverage)/float64(oldPosition.Leverage)*(newPosition.Amount/oldPosition.Amount) - 1
 		} else if err := s.repo.CreatePosition(newPosition); err != nil {
 			s.logger.Panic("unable to create position", zap.Int64("id", newPosition.Id), zap.Error(err))
 		}
