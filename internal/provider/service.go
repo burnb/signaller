@@ -17,7 +17,7 @@ import (
 type Service struct {
 	cfg            configs.Provider
 	logger         *zap.Logger
-	exchangeClient ExchangeClient
+	exchangeClient exchangeClient
 	repo           *repository.Mysql
 	publisher      publisher
 	traders        sync.Map
@@ -25,7 +25,7 @@ type Service struct {
 	lastSyncAt     time.Time
 }
 
-func NewService(cfg configs.Provider, log *zap.Logger, exClient ExchangeClient, repo *repository.Mysql, pub publisher) *Service {
+func NewService(cfg configs.Provider, log *zap.Logger, exClient exchangeClient, repo *repository.Mysql, pub publisher) *Service {
 	return &Service{
 		cfg:            cfg,
 		logger:         log.Named(loggerName),
@@ -171,7 +171,6 @@ func (s *Service) runPublisherUnFollowWorker() {
 
 func (s *Service) runPositionRefreshWorker() {
 	go func() {
-		refreshDuration := s.cfg.PositionRefreshTimeDuration()
 		for {
 			s.traders.Range(
 				func(k, v any) bool {
@@ -193,7 +192,7 @@ func (s *Service) runPositionRefreshWorker() {
 				s.lastSyncAt = time.Now()
 			}
 
-			time.Sleep(refreshDuration)
+			time.Sleep(s.cfg.PositionRefreshTimeDuration())
 		}
 	}()
 }

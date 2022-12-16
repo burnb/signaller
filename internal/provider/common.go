@@ -5,9 +5,8 @@ import (
 	"github.com/burnb/signaller/pkg/grpc/api/proto"
 )
 
-type ExchangeClient interface {
+type exchangeClient interface {
 	Name() string
-	TopTraders() (traders []*entities.Trader, err error)
 	RefreshTraders(traders []*entities.Trader)
 	TraderPositions(uid string) ([]*entities.Position, error)
 }
