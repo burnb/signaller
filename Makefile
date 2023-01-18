@@ -19,7 +19,7 @@ protoc:
     		./pkg/grpc/schema/*.proto
 
 migrate:
-	@cd ./migrations && goose mysql '${DB_USERNAME}:${DB_PASSWORD}@tcp(${DB})/signaller' up
+	@cd ./migrations && goose mysql '$(DB_USERNAME):$(DB_PASSWORD)@tcp($(DB))/signaller' up
 
 build:
 	env GOOS=linux GOARCH=amd64	go build -o ./build/signaller ./cmd
@@ -27,6 +27,19 @@ build:
 deploy:	build
 	rsync -aHAXxv --numeric-ids --delete --progress -e "ssh -T -c aes256-gcm@openssh.com -o Compression=no -x" ./build/signaller dev1:/home/ubuntu/signaller/app/app
 	ssh ubuntu@dev1 "cd ~/signaller/ && docker compose build && docker compose down && docker compose up -d"
+
+ENV ?= dev
+deploy_k8s:
+	$(eval build_tag=$(ENV)-$(shell git rev-parse --short HEAD)-$(shell date +%s))
+	docker buildx build --no-cache --platform linux/amd64 -t signaller:$(build_tag) -f ./deploy/Dockerfile .
+	helm upgrade --install signaller --set "global.build_tag=$(build_tag)" --set "global.env=$(ENV)" ./deploy/helm/ --values=./deploy/helm/values.yaml --values=./deploy/helm/values_$(ENV).yaml
+
+deploy_dev:
+	$(eval build_tag=dev-$(shell git rev-parse --short HEAD)-$(shell date +%s))
+	docker buildx build --no-cache --platform linux/amd64 -t signaller:$(build_tag) -f ./deploy/Dockerfile .
+	docker save signaller > ./build/signaller.tar
+	microk8s ctr image import ./build/signaller.tar
+	microk8s helm upgrade --install signaller --set "global.build_tag=$(build_tag)" --set "global.env=dev" ./deploy/helm/ --values=./deploy/helm/values.yaml --values=./deploy/helm/values_dev.yaml
 
 default: protoc
 

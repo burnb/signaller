@@ -32,3 +32,16 @@ TELEGRAM_CHAT_ID=id
 METRIC_HTTP_PORT=8000
 METRIC_PATH=/
 ```
+
+## K8s
+
+### Secrets
+
+```
+kubectl create secret generic signaller \
+  --from-literal=db_database='signaller' \
+  --from-literal=db_username='username' \
+  --from-literal=db_password='password' \
+  --from-literal=telegram_token='token' \
+  --from-literal=telegram_chat_id='chat_id'
+```

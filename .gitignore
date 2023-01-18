@@ -23,5 +23,8 @@ vendor/
 
 build/*
 
+deploy/k8s_secrets/*.yaml
+deploy/helm/*/values_local.yaml
+
 # Exceptions
 !*.example
